@@ -5,6 +5,10 @@
 
 #define _HAS_ITERATOR_DEBUGGING 0
 
+#ifndef M_PI
+#define M_PI       btScalar(3.14159265358979323846)
+#endif
+
 using namespace std;
 
 void InvalidBVH()
@@ -14,8 +18,9 @@ void InvalidBVH()
 
 #define INVALID_BVH {InvalidBVH(); return NULL;}
 
-void ReadFrameRecursive(vector<string>& tokens, SkeletalMotion* motion, SkeletonJoint* joint, int currentToken);
+void ReadFrameRecursive(vector<string>& tokens, SkeletalMotion* motion, SkeletonJoint* joint, int &currentToken);
 void PrintJointRecursive(SkeletonJoint* joint, int depth);
+btMatrix3x3 GetRotationMatrix(int axis, btScalar angle);
 
 int ChannelOrderToInt(string str)
 {
@@ -42,6 +47,10 @@ int ChannelOrderToInt(string str)
 	else if (!str.compare("Zposition"))
 	{
 		return 2;
+	}
+	else
+	{
+		return -1;
 	}
 }
 
@@ -88,9 +97,9 @@ SkeletonJoint* ParseJoint(vector<string> &tokens, int startToken, int* endToken,
 
 	joint->m_localOffset = btVector3
 	(
-	btScalar(atof(tokens[startToken + 4].c_str())),
-	btScalar(atof(tokens[startToken + 5].c_str())),
-	btScalar(atof(tokens[startToken + 6].c_str()))
+		btScalar(atof(tokens[startToken + 4].c_str())),
+		btScalar(atof(tokens[startToken + 5].c_str())),
+		btScalar(atof(tokens[startToken + 6].c_str()))
 	);
 
 	if (tokens[startToken + 7].compare("CHANNELS"))
@@ -105,6 +114,13 @@ SkeletonJoint* ParseJoint(vector<string> &tokens, int startToken, int* endToken,
 		joint->m_channelsOrdering[0] = ChannelOrderToInt(tokens[startToken + 9]);
 		joint->m_channelsOrdering[1] = ChannelOrderToInt(tokens[startToken + 10]);
 		joint->m_channelsOrdering[2] = ChannelOrderToInt(tokens[startToken + 11]);
+
+		if (joint->m_channelsOrdering[0] == -1 ||
+			joint->m_channelsOrdering[1] == -1 ||
+			joint->m_channelsOrdering[2] == -1)
+		{
+			INVALID_BVH
+		}
 	}
 	else if (!tokens[startToken + 8].compare("6"))
 	{
@@ -113,7 +129,7 @@ SkeletonJoint* ParseJoint(vector<string> &tokens, int startToken, int* endToken,
 		if (!rootOrdering)
 			INVALID_BVH
 
-		rootOrdering->push_back(ChannelOrderToInt(tokens[startToken + 9]));
+			rootOrdering->push_back(ChannelOrderToInt(tokens[startToken + 9]));
 		rootOrdering->push_back(ChannelOrderToInt(tokens[startToken + 10]));
 		rootOrdering->push_back(ChannelOrderToInt(tokens[startToken + 11]));
 
@@ -139,7 +155,7 @@ SkeletonJoint* ParseJoint(vector<string> &tokens, int startToken, int* endToken,
 				currentToken = currentEndToken + 1;
 			}
 		}
-		else if (!tokens[currentToken].compare("End") && !tokens[currentToken+1].compare("Site"))
+		else if (!tokens[currentToken].compare("End") && !tokens[currentToken + 1].compare("Site"))
 		{
 			if (!tokens[currentToken + 2].compare("{") && !tokens[currentToken + 3].compare("OFFSET") && !tokens[currentToken + 7].compare("}"))
 			{
@@ -157,7 +173,7 @@ SkeletonJoint* ParseJoint(vector<string> &tokens, int startToken, int* endToken,
 			else
 			{
 				INVALID_BVH
-				currentToken++;
+					currentToken++;
 			}
 		}
 		else
@@ -167,11 +183,11 @@ SkeletonJoint* ParseJoint(vector<string> &tokens, int startToken, int* endToken,
 		}
 	}
 	*endToken = currentToken;
-	
+
 	return joint;
 }
 
-SkeletalMotion* BVHImport(string bvhFilePath)
+SkeletalMotion* SkeletalMotion::BVHImport(string bvhFilePath)
 {
 	SkeletalMotion* skeletalMotion = new SkeletalMotion();
 
@@ -193,7 +209,7 @@ SkeletalMotion* BVHImport(string bvhFilePath)
 		if (!bvhFile)
 		{
 			bvhFile.close();
-			
+
 			INVALID_BVH
 		}
 		bvhFile.close();
@@ -226,7 +242,7 @@ SkeletalMotion* BVHImport(string bvhFilePath)
 			vector<int> rootOrdering;
 			int endToken = -1;
 			SkeletonJoint* rootJoint = ParseJoint(tokens, currentToken, &endToken, &rootOrdering);
-			
+
 			rootOrderings.push_back(rootOrdering);
 
 			if (rootJoint)
@@ -246,59 +262,50 @@ SkeletalMotion* BVHImport(string bvhFilePath)
 
 	if (tokens[currentToken + 1].compare("Frames:") || tokens[currentToken + 3].compare("Frame") | tokens[currentToken + 4].compare("Time:"))
 		INVALID_BVH
-	
-	int numberOfFrames = atoi(tokens[currentToken + 2].c_str());
+
+		int numberOfFrames = atoi(tokens[currentToken + 2].c_str());
 
 	skeletalMotion->m_frameTime = atof(tokens[currentToken + 5].c_str());
-	
-	currentToken += 5;
+
+	currentToken += 6;
 
 
 	for (int frame = 0; frame < numberOfFrames; frame++)
 	{
+		vector<btVector3> rootPositions;
 		for (int rootIndex = 0; rootIndex < skeletalMotion->m_skeletonRoots.size(); rootIndex++)
 		{
 			SkeletonJoint* root = skeletalMotion->m_skeletonRoots[rootIndex];
-			
+
 			btVector3 rootPosition;
-			rootPosition[rootOrderings[rootIndex][0]] = atof(tokens[currentToken+0].c_str());
-			rootPosition[rootOrderings[rootIndex][1]] = atof(tokens[currentToken+1].c_str());
-			rootPosition[rootOrderings[rootIndex][2]] = atof(tokens[currentToken+2].c_str());
+			rootPosition[rootOrderings[rootIndex][0]] = atof(tokens[currentToken + 0].c_str());
+			rootPosition[rootOrderings[rootIndex][1]] = atof(tokens[currentToken + 1].c_str());
+			rootPosition[rootOrderings[rootIndex][2]] = atof(tokens[currentToken + 2].c_str());
+
+			rootPositions.push_back(rootPosition);
 
 			currentToken += 3;
 
 			ReadFrameRecursive(tokens, skeletalMotion, root, currentToken);
 		}
+		skeletalMotion->m_rootTrajectories.push_back(rootPositions);
 	}
+	if (currentToken != tokens.size())
+		INVALID_BVH
 
 	return skeletalMotion;
 }
 
-btTransform GetTransformFromEuler(btVector3 &eulerAngles, btVector3 &translation)
+void ReadFrameRecursive(vector<string>& tokens, SkeletalMotion* motion, SkeletonJoint* joint, int &currentToken)
 {
+	if (!joint->m_childJoints.size())
+		return;
 
-	float phi = eulerAngles[0];
-	float theta = eulerAngles[1];
-	float psy = eulerAngles[2];
+	btMatrix3x3 rotation = btMatrix3x3::getIdentity();
+	for (int r = 0; r < 3; r++)
+		rotation *= GetRotationMatrix(joint->m_channelsOrdering[r], atof(tokens[currentToken + r].c_str()));
 
-	btMatrix3x3 rotation
-	(
-		cos(theta)*cos(psy), -cos(theta)*sin(psy), sin(theta),
-		cos(phi)*sin(psy) + sin(phi)*sin(theta)*cos(psy), cos(phi)*cos(psy) - sin(phi)*sin(theta)*sin(psy), -sin(phi)*cos(theta),
-		sin(phi)*sin(psy) - cos(phi)*sin(theta)*cos(psy), sin(phi)*cos(psy) + cos(phi)*sin(theta)*sin(psy), cos(phi)*cos(theta)
-	);
-
-	return btTransform(rotation, translation);
-}
-
-void ReadFrameRecursive(vector<string>& tokens, SkeletalMotion* motion, SkeletonJoint* joint, int currentToken)
-{
-	btVector3 eulerAngles;
-	eulerAngles[joint->m_channelsOrdering[0]] = atof(tokens[currentToken + 0].c_str());
-	eulerAngles[joint->m_channelsOrdering[1]] = atof(tokens[currentToken + 1].c_str());
-	eulerAngles[joint->m_channelsOrdering[2]] = atof(tokens[currentToken + 2].c_str());
-
-	btTransform jointTransform = GetTransformFromEuler(eulerAngles, joint->m_localOffset);
+	btTransform jointTransform = btTransform(rotation, joint->m_localOffset);
 
 	unordered_map<string, vector<btTransform>>::const_iterator mapIterator = motion->m_jointTransforms.find(joint->m_name);
 	if (mapIterator == motion->m_jointTransforms.end())
@@ -310,9 +317,11 @@ void ReadFrameRecursive(vector<string>& tokens, SkeletalMotion* motion, Skeleton
 		motion->m_jointTransforms[joint->m_name].push_back(jointTransform);
 	}
 
+	currentToken += 3;
+
 	for (auto child : joint->m_childJoints)
 	{
-		ReadFrameRecursive(tokens, motion, child, currentToken + 3);
+		ReadFrameRecursive(tokens, motion, child, currentToken);
 	}
 }
 
@@ -330,4 +339,79 @@ void PrintJointRecursive(SkeletonJoint* joint, int depth)
 void SkeletonJoint::PrintJoint()
 {
 	PrintJointRecursive(this, 0);
+}
+
+void GetSkeletalSegmentsRecurse(vector<pair<btVector3, btVector3>>* vertices,
+	SkeletonJoint* joint,
+	btVector3& jointPositionW,
+	btTransform& cumulativeTransform,
+	unordered_map<string, vector<btTransform>>* jointTransforms,
+	int frameIndex,
+	btVector3& rootTrajectory)
+{
+	for (auto child : joint->m_childJoints)
+	{
+		btVector3 childPositionL = child->m_localOffset;
+		btVector3 childPositionW = cumulativeTransform * btVector4(childPositionL[0], childPositionL[1], childPositionL[2], 1);
+
+		childPositionW += rootTrajectory;
+
+		vertices->push_back(pair<btVector3, btVector3>(jointPositionW, childPositionW));
+
+		if (child->m_childJoints.size())
+		{
+			btTransform nextCumulativeTransform = cumulativeTransform * jointTransforms->at(child->m_name)[frameIndex];
+			GetSkeletalSegmentsRecurse(vertices, child, childPositionW, nextCumulativeTransform, jointTransforms, frameIndex, rootTrajectory);
+		}
+	}
+}
+
+vector<pair<btVector3, btVector3>>* SkeletalMotion::GetSkeletalSegments(int skeletonIndex, int frameIndex, bool addRootTrajectory)
+{
+	SkeletonJoint* root = m_skeletonRoots[skeletonIndex];
+
+	btTransform transform = m_jointTransforms[root->m_name][frameIndex];
+
+	vector<pair<btVector3, btVector3>>* vertices = new vector<pair<btVector3, btVector3>>();
+
+	btVector3 rootTrajOffset = addRootTrajectory ? m_rootTrajectories[frameIndex][skeletonIndex] : btVector3(0, 0, 0);
+
+	btVector3 rootPositionW = root->m_localOffset + rootTrajOffset;
+
+	GetSkeletalSegmentsRecurse(vertices, root, rootPositionW, transform, &m_jointTransforms, frameIndex, rootTrajOffset);
+
+	return vertices;
+}
+
+btMatrix3x3 GetRotationMatrix(int axis, btScalar angle)
+{
+	angle *= M_PI / 180.0;
+
+	if (axis == 0)
+	{
+		return btMatrix3x3
+		(
+			1, 0, 0,
+			0, cos(angle), -sin(angle),
+			0, sin(angle), cos(angle)
+		);
+	}
+	else if (axis == 1)
+	{
+		return btMatrix3x3
+		(
+			cos(angle), 0, sin(angle),
+			0, 1, 0,
+			-sin(angle), 0, cos(angle)
+		);
+	}
+	else if (axis == 2)
+	{
+		return btMatrix3x3
+		(
+			cos(angle), -sin(angle), 0,
+			sin(angle), cos(angle), 0,
+			-0, 0, 1
+		);
+	}
 }

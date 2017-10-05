@@ -9,7 +9,6 @@
 #include "LinearMath/btVector3.h"
 
 #include "articulated_ragdoll.h"
-#include "animation_clip.h"
 
 class CommonExampleInterface*    BVHGymCreateFunc(struct CommonExampleOptions& options);
 

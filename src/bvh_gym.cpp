@@ -54,7 +54,7 @@ void BVHGym::initPhysics()
 		btScalar scale(3.5);
 		btVector3 pos(0.0f, sizeY, 0.0f);
 		
-		ArticulatedRagDoll* ragDoll = new ArticulatedRagDoll(m_dynamicsWorld, pos, scale);
+		//ArticulatedRagDoll* ragDoll = new ArticulatedRagDoll(m_dynamicsWorld, pos, scale);
 	}
 
 	

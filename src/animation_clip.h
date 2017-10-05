@@ -25,15 +25,14 @@ class SkeletalMotion
 {
 public:
 
-	SkeletalMotion() {};
 	~SkeletalMotion() {};
+	static SkeletalMotion* BVHImport(std::string bvhFilePath);
+
+	std::vector<std::pair<btVector3, btVector3>>* GetSkeletalSegments(int skeletonIndex, int frameIndex, bool addRootTrajectory);
 
 	btScalar m_frameTime; // frameTime in Seconds
-	std::vector<std::vector<btVector3>> m_rootTrajectory;
 
+	std::vector<std::vector<btVector3>> m_rootTrajectories;
 	std::unordered_map<std::string, std::vector<btTransform>> m_jointTransforms;
-
 	std::vector<SkeletonJoint*> m_skeletonRoots;
 };
-
-SkeletalMotion* BVHImport(std::string bvhFilePath);
