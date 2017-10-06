@@ -6,11 +6,13 @@
 #include <vector>
 #include <unordered_map>
 
+using namespace std;
+
 class SkeletonJoint
 {
 public:
 
-	SkeletonJoint(std::string name, std::vector<SkeletonJoint*> childJoints, btVector3 &localOffset)
+	SkeletonJoint(string name, vector<SkeletonJoint*> childJoints, btVector3 &localOffset)
 	{
 		m_name = name;
 		m_childJoints = childJoints;
@@ -19,17 +21,19 @@ public:
 
 	~SkeletonJoint() {};
 
-	std::string GetName()		{ return m_name;		}
+	string GetName()		{ return m_name;		}
 	btVector3 GetLocalOffset()	{ return m_localOffset; }
 	
-	std::vector<SkeletonJoint*> GetChildrenPointers() { return m_childJoints; }
+	vector<SkeletonJoint*> GetChildrenPointers() { return m_childJoints; }
+	
+	void QuerySkeleton(vector<string> jointsByName, vector<pair<string,string>> bonesByJointNames);
 
 	void PrintJoint();
 
 private:
-	std::string					m_name;
-	btVector3					m_localOffset;
-	std::vector<SkeletonJoint*> m_childJoints;
+	string					m_name;
+	btVector3				m_localOffset;
+	vector<SkeletonJoint*>	m_childJoints;
 };
 
 class SkeletalMotion
@@ -37,10 +41,10 @@ class SkeletalMotion
 public:
 
 	SkeletalMotion(
-	std::string name,
-	std::vector<std::vector<btVector3>> rootTrajectories,
-	std::unordered_map<std::string, std::vector<btTransform>> jointTransforms,
-	std::vector<SkeletonJoint*> skeletonRoots,
+	string name,
+	vector<vector<btVector3>> rootTrajectories,
+	unordered_map<string, vector<btTransform>> jointTransforms,
+	vector<SkeletonJoint*> skeletonRoots,
 	float samplingRate,
 	int	  frameCount) 
 	{
@@ -54,29 +58,37 @@ public:
 
 	~SkeletalMotion();
 
-	std::string GetName()	{ return m_name;			}
+	string GetName()		{ return m_name;			}
 	float GetSamplingRate() { return m_samplingRate;	}
 	int GetFrameCount()		{ return m_frameCount;		}
 	SkeletonJoint* GetRoot(int index){ return m_skeletonRoots[index]; }
 
-	void GetSkeletalSegments(std::vector<std::pair<btVector3, btVector3>> &result, int skeletonIndex, int frameIndex, bool addRootTrajectory);
+	void QuerySkeletalAnimation
+	(
+		/*Defines the query inputs*/
+		int frameIndex,
+		int skeletonIndex,
+		bool addRootOffset,
+		/*Defines the query outputs*/
+		vector<btVector3>* jointPositions = NULL,
+		unordered_map<string, btVector3>* jointPositionsByName = NULL,
+		vector<pair<btVector3, btVector3>>* segmentPositions = NULL,
+		unordered_map<string, btTransform>* cumulativeTransformsByName = NULL
+	);
 
-	void GetJointPositions(std::vector<btVector3> &result, int skeletonIndex, int frameIndex, bool addRootTrajectory);
-
-	void GetJointPositionsByName(std::unordered_map<std::string, btVector3> &result, int skeletonIndex, int frameIndex, bool addRootTrajectory);
 private:
-	std::string m_name;
-	std::vector<std::vector<btVector3>> m_rootTrajectories;
-	std::unordered_map<std::string,
-		std::vector<btTransform>>		m_jointTransforms;
+	string m_name;
+	vector<vector<btVector3>> m_rootTrajectories;
+	unordered_map<string,
+		vector<btTransform>>		m_jointTransforms;
 
-	std::vector<SkeletonJoint*>			m_skeletonRoots;
+	vector<SkeletonJoint*>			m_skeletonRoots;
 	float								m_samplingRate;
 	int									m_frameCount;
 
 public:
 
-	static SkeletalMotion* BVHImport(std::string bvhFilePath);
+	static SkeletalMotion* BVHImport(string bvhFilePath);
 };
 
 class SkeletalAnimationPlayer

@@ -72,24 +72,28 @@ void BVHGym::renderScene()
 	CommonRigidBodyBase::renderScene();
 
 	int animationFrame = m_clock.getTimeSeconds() * m_skeletalMotion->GetSamplingRate();
-
+	if (animationFrame >= m_skeletalMotion->GetFrameCount())
+	{
+		m_clock.reset();
+		animationFrame = m_clock.getTimeSeconds() * m_skeletalMotion->GetSamplingRate();
+	}
 	
 	std::vector < std::pair<btVector3, btVector3>> segments;
-	m_skeletalMotion->GetSkeletalSegments(segments, 0, animationFrame, true);
+	m_skeletalMotion->QuerySkeletalAnimation(animationFrame, 0, false, NULL, NULL, &segments, NULL);
 	for (auto verticePair : segments)
 	{
 		m_dynamicsWorld->getDebugDrawer()->drawLine(verticePair.first, verticePair.second, { 1, 0, 0 });
 	}
 	
 
-	//std::vector<btVector3> positions;
-	//m_skeletalMotion->GetJointPositions(positions, 0, animationFrame, true);
-	//for (auto position : positions)
-	//{
-	//	m_dynamicsWorld->getDebugDrawer()->drawSphere(position, 1, { 1, 0, 0 });
-	//}
+	std::vector<btVector3> positions;
+	m_skeletalMotion->QuerySkeletalAnimation(animationFrame, 0, false, &positions, NULL, NULL, NULL);
+	for (auto position : positions)
+	{
+		m_dynamicsWorld->getDebugDrawer()->drawSphere(position, 1, { 1, 0, 0 });
+	}
 
-	m_articulatedRagdoll->UpdateJointPositions(animationFrame);
+	//m_articulatedRagdoll->UpdateJointPositions(animationFrame);
 }
 
 

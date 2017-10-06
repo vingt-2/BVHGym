@@ -1,9 +1,8 @@
 #include <fstream>
 #include <iostream>
 #include <string.h>
+#include <stack>
 #include "animation.h"
-
-using namespace std;
 
 void PrintJointRecursive(SkeletonJoint* joint, int depth)
 {
@@ -21,117 +20,101 @@ void SkeletonJoint::PrintJoint()
 	PrintJointRecursive(this, 0);
 }
 
-void GetSkeletalSegmentsRecurse(vector<pair<btVector3, btVector3>>& vertices,
-	SkeletonJoint* joint,
-	btVector3& jointPositionW,
-	btTransform& cumulativeTransform,
-	unordered_map<string, vector<btTransform>>* jointTransforms,
-	int frameIndex,
-	btVector3& rootTrajectory)
+void QuerySkeletalAnimationRecursive
+(
+/*Defines the recursion parameters */
+SkeletonJoint* joint,
+btTransform& cumulativeTransform,
+unordered_map<string, vector<btTransform>>& jointTransforms,
+/*Defines the query inputs*/
+int frameIndex,
+int skeletonIndex,
+/*Defines the query outputs*/
+vector<btVector3>* jointPositions,
+unordered_map<string, btVector3>* jointPositionsByName,
+vector<pair<btVector3, btVector3>>* segmentPositions,
+unordered_map<string, btTransform>* cumulativeTransformsByName
+)
 {
+	btVector3 jointPositionL = joint->GetLocalOffset();
+	btVector3 jointPositionW = cumulativeTransform * btVector4(jointPositionL[0], jointPositionL[1], jointPositionL[2], 1);
+
+	if (cumulativeTransformsByName)
+	{
+		if (cumulativeTransformsByName->find(joint->GetName()) == cumulativeTransformsByName->end())
+			cumulativeTransformsByName->emplace(joint->GetName(), cumulativeTransform);
+	}
+
+	if (jointPositions)
+		jointPositions->push_back(jointPositionW);
+
+	if (jointPositionsByName)
+	{
+		if (jointPositionsByName->find(joint->GetName()) == jointPositionsByName->end())
+			jointPositionsByName->emplace(joint->GetName(), jointPositionW);
+	}
+
+	btTransform nextCumulativeTransform;
+	if (joint->GetChildrenPointers().size()) // Leaf joints do not have transforms, let's not try looking for them
+		nextCumulativeTransform = cumulativeTransform * jointTransforms[joint->GetName()][frameIndex];
+
 	for (auto child : joint->GetChildrenPointers())
 	{
-		btVector3 childPositionL = child->GetLocalOffset();
-		btVector3 childPositionW = cumulativeTransform * btVector4(childPositionL[0], childPositionL[1], childPositionL[2], 1);
-
-		childPositionW += rootTrajectory;
-
-		vertices.push_back(pair<btVector3, btVector3>(jointPositionW, childPositionW));
-
-		if (child->GetChildrenPointers().size())
+		if (segmentPositions)
 		{
-			btTransform nextCumulativeTransform = cumulativeTransform * jointTransforms->at(child->GetName())[frameIndex];
-			GetSkeletalSegmentsRecurse(vertices, child, childPositionW, nextCumulativeTransform, jointTransforms, frameIndex, rootTrajectory);
+			btVector3 childPositionL = child->GetLocalOffset();
+			btVector3 childPositionW = nextCumulativeTransform * btVector4(childPositionL[0], childPositionL[1], childPositionL[2], 1);
+
+			segmentPositions->push_back(pair<btVector3, btVector3>(nextCumulativeTransform.getOrigin(), childPositionW));
 		}
+
+		QuerySkeletalAnimationRecursive(
+			child,
+			nextCumulativeTransform,
+			jointTransforms,
+			frameIndex,
+			skeletonIndex,
+			jointPositions,
+			jointPositionsByName,
+			segmentPositions,
+			cumulativeTransformsByName);
+		
 	}
 }
 
-void SkeletalMotion::GetSkeletalSegments(vector<pair<btVector3, btVector3>> &result, int skeletonIndex, int frameIndex, bool addRootTrajectory)
+void SkeletalMotion::QuerySkeletalAnimation
+(
+/*Defines the query inputs*/
+int frameIndex,
+int skeletonIndex,
+bool addRootOffset,
+/*Defines the query outputs*/
+vector<btVector3>* jointPositions,
+unordered_map<string, btVector3>* jointPositionsByName,
+vector<pair<btVector3, btVector3>>* segmentPositions,
+unordered_map<string, btTransform>* cumulativeTransformsByName
+)
 {
+	if (!jointPositions && !jointPositionsByName && !segmentPositions && !cumulativeTransformsByName)
+		return;
+
 	SkeletonJoint* root = m_skeletonRoots[skeletonIndex];
 
-	btTransform transform = m_jointTransforms[root->GetName()][frameIndex];
+	btTransform rootTransform = btTransform::getIdentity();
 
-	btVector3 rootTrajOffset = addRootTrajectory ? m_rootTrajectories[frameIndex][skeletonIndex] : btVector3(0, 0, 0);
+	if (addRootOffset)
+		rootTransform.setOrigin(m_rootTrajectories[frameIndex][skeletonIndex]);
 
-	btVector3 rootPositionW = root->GetLocalOffset() + rootTrajOffset;
-
-	GetSkeletalSegmentsRecurse(result, root, rootPositionW, transform, &m_jointTransforms, frameIndex, rootTrajOffset);
-}
-
-void GetJointPositionsRecurse(
-	vector<btVector3> &vertices,
-	SkeletonJoint* joint,
-	btTransform& cumulativeTransform,
-	unordered_map<string, vector<btTransform>>* jointTransforms,
-	int frameIndex,
-	btVector3& rootTrajectory)
-{
-	for (auto child : joint->GetChildrenPointers())
-	{
-		btVector3 childPositionL = child->GetLocalOffset();
-		btVector3 childPositionW = cumulativeTransform * btVector4(childPositionL[0], childPositionL[1], childPositionL[2], 1);
-
-		childPositionW += rootTrajectory;
-
-		vertices.push_back(childPositionW);
-
-		if (child->GetChildrenPointers().size())
-		{
-			btTransform nextCumulativeTransform = cumulativeTransform * jointTransforms->at(child->GetName())[frameIndex];
-			GetJointPositionsRecurse(vertices, child, nextCumulativeTransform, jointTransforms, frameIndex, rootTrajectory);
-		}
-	}
-}
-
-void SkeletalMotion::GetJointPositions(vector<btVector3> &result, int skeletonIndex, int frameIndex, bool addRootTrajectory)
-{
-	SkeletonJoint* root = m_skeletonRoots[skeletonIndex];
-
-	btTransform transform = m_jointTransforms[root->GetName()][frameIndex];
-
-	btVector3 rootTrajOffset = addRootTrajectory ? m_rootTrajectories[frameIndex][skeletonIndex] : btVector3(0, 0, 0);
-
-	result.push_back(root->GetLocalOffset() + rootTrajOffset);
-
-	GetJointPositionsRecurse(result, root, transform, &m_jointTransforms, frameIndex, rootTrajOffset);
-}
-
-void GetJointPositionsRecurseByNameRecurse(
-	unordered_map<string, btVector3> &result,
-	SkeletonJoint* joint,
-	btTransform& cumulativeTransform,
-	unordered_map<string, vector<btTransform>>* jointTransforms,
-	int frameIndex,
-	btVector3& rootTrajectory)
-{
-	for (auto child : joint->GetChildrenPointers())
-	{
-		btVector3 childPositionL = child->GetLocalOffset();
-		btVector3 childPositionW = cumulativeTransform * btVector4(childPositionL[0], childPositionL[1], childPositionL[2], 1);
-
-		childPositionW += rootTrajectory;
-
-		result[child->GetName()] = childPositionW;
-
-		if (child->GetChildrenPointers().size())
-		{
-			btTransform nextCumulativeTransform = cumulativeTransform * jointTransforms->at(child->GetName())[frameIndex];
-			GetJointPositionsRecurseByNameRecurse(result, child, nextCumulativeTransform, jointTransforms, frameIndex, rootTrajectory);
-		}
-	}
-
-}
-
-void  SkeletalMotion::GetJointPositionsByName(unordered_map<string, btVector3> &result, int skeletonIndex, int frameIndex, bool addRootTrajectory)
-{
-	SkeletonJoint* root = m_skeletonRoots[skeletonIndex];
-
-	btTransform transform = m_jointTransforms[root->GetName()][frameIndex];
-
-	btVector3 rootTrajOffset = addRootTrajectory ? m_rootTrajectories[frameIndex][skeletonIndex] : btVector3(0, 0, 0);
-
-	result[root->GetName()] = root->GetLocalOffset() + rootTrajOffset;
-
-	GetJointPositionsRecurseByNameRecurse(result, root, transform, &m_jointTransforms, frameIndex, rootTrajOffset);
+	QuerySkeletalAnimationRecursive
+	(
+		root, 
+		rootTransform, 
+		m_jointTransforms,
+		frameIndex, 
+		skeletonIndex,
+		jointPositions,
+		jointPositionsByName, 
+		segmentPositions,
+		cumulativeTransformsByName
+	);
 }
