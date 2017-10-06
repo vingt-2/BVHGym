@@ -69,8 +69,6 @@ public:
 };
 int main(int argc, char* argv[])
 {
-	SkeletalMotion* skeletalMotion = SkeletalMotion::BVHImport("test.bvh");
-
 	SimpleOpenGL3App* app = new SimpleOpenGL3App("Bullet Standalone Example", 1024, 768, true);
 
 	prevMouseButtonCallback = app->m_window->getMouseButtonCallback();
@@ -79,7 +77,7 @@ int main(int argc, char* argv[])
 	app->m_window->setMouseButtonCallback((b3MouseButtonCallback)OnMouseDown);
 	app->m_window->setMouseMoveCallback((b3MouseMoveCallback)OnMouseMove);
 
-	OpenGLGuiHelper gui(app, false);
+	OpenGLGuiHelper gui(app, true);
 
 
 	CommonExampleOptions options(&gui);
@@ -111,17 +109,7 @@ int main(int argc, char* argv[])
 		DrawGridData dg;
 		dg.upAxis = app->getUpAxis();
 		app->drawGrid(dg);
-		std::cout << time / skeletalMotion->m_frameTime << "\n";
-		std::vector < std::pair<btVector3, btVector3>>* vertices = (skeletalMotion->GetSkeletalSegments(0, time / skeletalMotion->m_frameTime, true));
-		for (auto verticePair : *vertices)
-		{			
-			float a[] = { verticePair.first[0], verticePair.first[1], verticePair.first[2], 1 };
-			float b[] = { verticePair.second[0], verticePair.second[1], verticePair.second[2], 1 };
-			float c[] = { 1, 0, 0, 1 };
-			app->m_instancingRenderer->drawLine(a, b, c, 1);
-		}
-		vertices->~vector();
-		//app->m_instancingRenderer->drawLine()
+
 		app->swapBuffer();
 	} while (!app->m_window->requestedExit());
 

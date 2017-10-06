@@ -14,10 +14,17 @@ class CommonExampleInterface*    BVHGymCreateFunc(struct CommonExampleOptions& o
 
 struct BVHGym : public CommonRigidBodyBase
 {
-	BVHGym(struct GUIHelperInterface* helper) : CommonRigidBodyBase(helper) {};
+	BVHGym(struct GUIHelperInterface* helper) : CommonRigidBodyBase(helper) 
+	{};
 
 	virtual ~BVHGym(){}
 	virtual void initPhysics();
 	virtual void renderScene();
 	void ResetCamera();
+
+	SkeletalMotion* m_skeletalMotion;
+	ArticulatedRagDoll* m_articulatedRagdoll;
+
+private:
+	btClock m_clock;
 };

@@ -32,7 +32,10 @@
     <ClCompile Include="src\articulated_ragdoll.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\animation_clip.cpp">
+    <ClCompile Include="src\animation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\bvh_Importer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -43,7 +46,7 @@
     <ClInclude Include="src\articulated_ragdoll.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\animation_clip.h">
+    <ClInclude Include="src\animation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

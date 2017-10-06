@@ -15,6 +15,8 @@ void BVHGym::ResetCamera()
 
 void BVHGym::initPhysics()
 {
+	m_skeletalMotion = SkeletalMotion::BVHImport("01_04.bvh");
+
 	m_guiHelper->setUpAxis(1);
 
 	createEmptyDynamicsWorld();
@@ -28,7 +30,7 @@ void BVHGym::initPhysics()
 	btBoxShape* groundShape = createBoxShape(btVector3(btScalar(50.),btScalar(50.),btScalar(50.)));
 	
 
-	//groundShape->initializePolyhedralFeatures();
+	groundShape->initializePolyhedralFeatures();
 	//btCollisionShape* groundShape = new btStaticPlaneShape(btVector3(0,1,0),50);
 	
 	m_collisionShapes.push_back(groundShape);
@@ -54,7 +56,7 @@ void BVHGym::initPhysics()
 		btScalar scale(3.5);
 		btVector3 pos(0.0f, sizeY, 0.0f);
 		
-		//ArticulatedRagDoll* ragDoll = new ArticulatedRagDoll(m_dynamicsWorld, pos, scale);
+		m_articulatedRagdoll = new ArticulatedRagDoll(m_dynamicsWorld, m_skeletalMotion, 0, btVector3(), 1);
 	}
 
 	
@@ -65,8 +67,29 @@ void BVHGym::initPhysics()
 
 void BVHGym::renderScene()
 {
+	m_dynamicsWorld->getDebugDrawer()->flushLines();
+
 	CommonRigidBodyBase::renderScene();
+
+	int animationFrame = m_clock.getTimeSeconds() * m_skeletalMotion->GetSamplingRate();
+
 	
+	std::vector < std::pair<btVector3, btVector3>> segments;
+	m_skeletalMotion->GetSkeletalSegments(segments, 0, animationFrame, true);
+	for (auto verticePair : segments)
+	{
+		m_dynamicsWorld->getDebugDrawer()->drawLine(verticePair.first, verticePair.second, { 1, 0, 0 });
+	}
+	
+
+	//std::vector<btVector3> positions;
+	//m_skeletalMotion->GetJointPositions(positions, 0, animationFrame, true);
+	//for (auto position : positions)
+	//{
+	//	m_dynamicsWorld->getDebugDrawer()->drawSphere(position, 1, { 1, 0, 0 });
+	//}
+
+	m_articulatedRagdoll->UpdateJointPositions(animationFrame);
 }
 
 

@@ -6,6 +6,10 @@
 
 #include "LinearMath/btVector3.h"
 
+#include <vector>
+
+using namespace std;
+
 #ifndef M_PI
 #define M_PI       btScalar(3.14159265358979323846)
 #endif
@@ -36,88 +40,121 @@ btRigidBody* ArticulatedRagDoll::createRigidBody(btScalar mass, const btTransfor
 	return body;
 }
 
-ArticulatedRagDoll::ArticulatedRagDoll(btDynamicsWorld* ownerWorld,
-										SkeletalMotion* skeletalMotion,
-										int skeletonIndex,
-										const btVector3& positionOffset,
-										btScalar scale)
-	: m_ownerWorld(ownerWorld)
+ArticulatedRagDoll::ArticulatedRagDoll(
+	btDynamicsWorld* ownerWorld,
+	SkeletalMotion* skeletalMotion,
+	int skeletonIndex,
+	const btVector3& positionOffset,
+	btScalar scale)
+: m_ownerWorld(ownerWorld), m_skeletalMotion(skeletalMotion)
 {
+	unordered_map<string, btVector3> jointPositions;
+	m_skeletalMotion->GetJointPositionsByName(jointPositions, 0, 0, true);
 
-	SkeletonJoint* rootJoint = skeletalMotion->m_skeletonRoots[skeletonIndex];
+	SkeletonJoint* currentJoint = m_skeletalMotion->GetRoot(0);
 
-	//// Setup the geometry
-	//m_shapes[BODYPART_PELVIS] = new btCapsuleShape(btScalar(0.15)*scale, btScalar(0.20)*scale);
-	//m_shapes[BODYPART_SPINE] = new btCapsuleShape(btScalar(0.15)*scale, btScalar(0.28)*scale);
-	//m_shapes[BODYPART_HEAD] = new btCapsuleShape(btScalar(0.10)*scale, btScalar(0.05)*scale);
-	//m_shapes[BODYPART_LEFT_UPPER_LEG] = new btCapsuleShape(btScalar(0.07)*scale, btScalar(0.45)*scale);
-	//m_shapes[BODYPART_LEFT_LOWER_LEG] = new btCapsuleShape(btScalar(0.05)*scale, btScalar(0.37)*scale);
-	//m_shapes[BODYPART_RIGHT_UPPER_LEG] = new btCapsuleShape(btScalar(0.07)*scale, btScalar(0.45)*scale);
-	//m_shapes[BODYPART_RIGHT_LOWER_LEG] = new btCapsuleShape(btScalar(0.05)*scale, btScalar(0.37)*scale);
-	//m_shapes[BODYPART_LEFT_UPPER_ARM] = new btCapsuleShape(btScalar(0.05)*scale, btScalar(0.33)*scale);
-	//m_shapes[BODYPART_LEFT_LOWER_ARM] = new btCapsuleShape(btScalar(0.04)*scale, btScalar(0.25)*scale);
-	//m_shapes[BODYPART_RIGHT_UPPER_ARM] = new btCapsuleShape(btScalar(0.05)*scale, btScalar(0.33)*scale);
-	//m_shapes[BODYPART_RIGHT_LOWER_ARM] = new btCapsuleShape(btScalar(0.04)*scale, btScalar(0.25)*scale);
+	for (auto joint : jointPositions)
+	{
+		string jointName = joint.first;
+		btVector3 jointPosition = joint.second;
 
-	//// Setup all the rigid bodies
-	//btTransform offset; offset.setIdentity();
-	//offset.setOrigin(positionOffset);
+		KinematicMotionState* kinematicMotionState = new KinematicMotionState(btTransform(btMatrix3x3::getIdentity(), jointPosition));
+		btRigidBody::btRigidBodyConstructionInfo rbInfo(0, kinematicMotionState, new btSphereShape(0.001), btVector3(0, 0, 0));
+		btRigidBody* kinematicJointBody = new btRigidBody(rbInfo);
+		kinematicJointBody->setCollisionFlags(btCollisionObject::CF_KINEMATIC_OBJECT | btCollisionObject::CF_NO_CONTACT_RESPONSE);
+		m_jointKinematicMotionStates[jointName] = kinematicMotionState;
+		m_ownerWorld->addRigidBody(kinematicJointBody);
 
-	//btTransform transform;
-	//transform.setIdentity();
-	//transform.setOrigin(scale*btVector3(btScalar(0.), btScalar(1.), btScalar(0.)));
-	//m_bodies[BODYPART_PELVIS] = createRigidBody(btScalar(1.), offset*transform, m_shapes[BODYPART_PELVIS]);
+		btBoxShape* shape = new btBoxShape(btVector3(0.5, 0.5, 0.5));
+		m_shapes.push_back(shape);
 
-	//transform.setIdentity();
-	//transform.setOrigin(scale*btVector3(btScalar(0.), btScalar(1.2), btScalar(0.)));
-	//m_bodies[BODYPART_SPINE] = createRigidBody(btScalar(1.), offset*transform, m_shapes[BODYPART_SPINE]);
+		btTransform transform;
+		transform.setIdentity();
+		transform.setOrigin(jointPosition);
 
-	//transform.setIdentity();
-	//transform.setOrigin(scale*btVector3(btScalar(0.), btScalar(1.6), btScalar(0.)));
-	//m_bodies[BODYPART_HEAD] = createRigidBody(btScalar(1.), offset*transform, m_shapes[BODYPART_HEAD]);
+		btRigidBody* rigidBody = createRigidBody(btScalar(1.0), transform, shape);
 
-	//transform.setIdentity();
-	//transform.setOrigin(scale*btVector3(btScalar(-0.18), btScalar(0.65), btScalar(0.)));
-	//m_bodies[BODYPART_LEFT_UPPER_LEG] = createRigidBody(btScalar(1.), offset*transform, m_shapes[BODYPART_LEFT_UPPER_LEG]);
-
-	//transform.setIdentity();
-	//transform.setOrigin(scale*btVector3(btScalar(-0.18), btScalar(0.2), btScalar(0.)));
-	//m_bodies[BODYPART_LEFT_LOWER_LEG] = createRigidBody(btScalar(1.), offset*transform, m_shapes[BODYPART_LEFT_LOWER_LEG]);
-
-	//transform.setIdentity();
-	//transform.setOrigin(scale*btVector3(btScalar(0.18), btScalar(0.65), btScalar(0.)));
-	//m_bodies[BODYPART_RIGHT_UPPER_LEG] = createRigidBody(btScalar(1.), offset*transform, m_shapes[BODYPART_RIGHT_UPPER_LEG]);
-
-	//transform.setIdentity();
-	//transform.setOrigin(scale*btVector3(btScalar(0.18), btScalar(0.2), btScalar(0.)));
-	//m_bodies[BODYPART_RIGHT_LOWER_LEG] = createRigidBody(btScalar(1.), offset*transform, m_shapes[BODYPART_RIGHT_LOWER_LEG]);
-
-	//transform.setIdentity();
-	//transform.setOrigin(scale*btVector3(btScalar(-0.35), btScalar(1.45), btScalar(0.)));
-	//transform.getBasis().setEulerZYX(0, 0, M_PI_2);
-	//m_bodies[BODYPART_LEFT_UPPER_ARM] = createRigidBody(btScalar(1.), offset*transform, m_shapes[BODYPART_LEFT_UPPER_ARM]);
-
-	//transform.setIdentity();
-	//transform.setOrigin(scale*btVector3(btScalar(-0.7), btScalar(1.45), btScalar(0.)));
-	//transform.getBasis().setEulerZYX(0, 0, M_PI_2);
-	//m_bodies[BODYPART_LEFT_LOWER_ARM] = createRigidBody(btScalar(1.), offset*transform, m_shapes[BODYPART_LEFT_LOWER_ARM]);
-
-	//transform.setIdentity();
-	//transform.setOrigin(scale*btVector3(btScalar(0.35), btScalar(1.45), btScalar(0.)));
-	//transform.getBasis().setEulerZYX(0, 0, -M_PI_2);
-	//m_bodies[BODYPART_RIGHT_UPPER_ARM] = createRigidBody(btScalar(1.), offset*transform, m_shapes[BODYPART_RIGHT_UPPER_ARM]);
-
-	//transform.setIdentity();
-	//transform.setOrigin(scale*btVector3(btScalar(0.7), btScalar(1.45), btScalar(0.)));
-	//transform.getBasis().setEulerZYX(0, 0, -M_PI_2);
-	//m_bodies[BODYPART_RIGHT_LOWER_ARM] = createRigidBody(btScalar(1.), offset*transform, m_shapes[BODYPART_RIGHT_LOWER_ARM]);
-
-	//// Setup some damping on the m_bodies
-	//for (int i = 0; i < BODYPART_COUNT; ++i)
+		rigidBody->setDamping(btScalar(0.05), btScalar(0.85));
+		rigidBody->setDeactivationTime(btScalar(0.8));
+		rigidBody->setSleepingThresholds(btScalar(1.6), btScalar(2.5));
+		m_bodies.push_back(createRigidBody(btScalar(1.0), transform, shape));
+		
+		btPoint2PointConstraint* jointToBoxContraint = new btPoint2PointConstraint(*kinematicJointBody, *rigidBody, btVector3(0, 0, 0), btVector3(0, 0, 0));
+		m_ownerWorld->addConstraint(jointToBoxContraint);
+		m_jointConstraints[jointName] = jointToBoxContraint;
+	}
+	//while (currentJoint)
 	//{
-	//	m_bodies[i]->setDamping(btScalar(0.05), btScalar(0.85));
-	//	m_bodies[i]->setDeactivationTime(btScalar(0.8));
-	//	m_bodies[i]->setSleepingThresholds(btScalar(1.6), btScalar(2.5));
+	//	btVector3 jointPosition = jointPositions[currentJoint->GetName()];
+	//	btVector4 jointPositionH(jointPosition[0], jointPosition[1], jointPosition[2], 1.0);
+
+	//	btRigidBody::btRigidBodyConstructionInfo rbInfo(0, new KinematicMotionState(btTransform(btMatrix3x3::getIdentity(),jointPosition)), new btSphereShape(0.01), btVector3(0, 0, 0));
+	//	btRigidBody* kinematicJointBody = new btRigidBody(rbInfo);
+
+	//	for (auto child : currentJoint->GetChildrenPointers())
+	//	{
+	//		btVector3 childPosition = jointPositions[child->GetName()];
+	//		float segmentLength = jointPosition.distance(childPosition);
+	//		//btCapsuleShape* shape = new btCapsuleShape(0.1*segmentLength, segmentLength);
+
+	//		btBoxShape* shape = new btBoxShape(btVector3(1, 1, 1));
+	//		m_shapes.push_back(shape);
+
+	//		btTransform transform;
+	//		transform.setIdentity();
+	//		transform.setOrigin(0.5 * (jointPosition + childPosition));
+
+	//		btRigidBody* rigidBody = createRigidBody(btScalar(1.0), transform, shape);
+
+	//		rigidBody->setDamping(btScalar(0.05), btScalar(0.85));
+	//		rigidBody->setDeactivationTime(btScalar(0.8));
+	//		rigidBody->setSleepingThresholds(btScalar(1.6), btScalar(2.5));
+	//		m_bodies.push_back(createRigidBody(btScalar(1.0), transform, shape));
+
+	//		btVector3 jointInRigidBodyLocal = transform.inverse() * jointPositionH;
+
+	//		btPoint2PointConstraint* ChildToJointContraint = new btPoint2PointConstraint(*kinematicJointBody, *rigidBody, btVector3(0, 0, 0), jointInRigidBodyLocal);
+	//	}
+
+	//	//btPoint2PointConstraint* parentToJointContraint = new btPoint2PointConstraint(*kinematicJointBody, *rigidBody, btVector3(0, 0, 0), jointInRigidBodyLocal);
+	//}
+
+	//for (auto joint : joints)
+	//{
+	//	string jointName = joint.first;
+	//	btVector3 jointPosition
+	//	btBoxShape* box = new btBoxShape(btVector3(1, 1, 1));
+	//	m_shapes.push_back(box);
+	//	
+	//	btRigidBody* rigidBody = createRigidBody(btScalar(1.0), btTransform::getIdentity(), box);
+	//	
+	//	//btRigidBody* rigidBody
+	//	
+	//	rigidBody->setDamping(btScalar(0.05), btScalar(0.85));
+	//	rigidBody->setDeactivationTime(btScalar(0.8));
+	//	rigidBody->setSleepingThresholds(btScalar(1.6), btScalar(2.5));
+
+	//	m_bodies.push_back(rigidBody);
+	//}
+
+	//vector<pair<btVector3, btVector3>> segments;
+	//m_skeletalMotion->GetSkeletalSegments(segments, 0, 0, true);
+	//for (auto segment : segments)
+	//{
+	//	float segmentLength = segment.first.distance(segment.second);
+	//	btCapsuleShape* capsule = new btCapsuleShape(0.1*segmentLength, segmentLength);
+	//	m_shapes.push_back(capsule);
+	//	
+	//	btTransform transform;
+	//	transform.setIdentity();
+	//	transform.setOrigin(0.5 * (segment.first+segment.second));
+
+	//	btRigidBody* rigidBody = createRigidBody(btScalar(1.0), transform, capsule);
+
+	//	rigidBody->setDamping(btScalar(0.05), btScalar(0.85));
+	//	rigidBody->setDeactivationTime(btScalar(0.8));
+	//	rigidBody->setSleepingThresholds(btScalar(1.6), btScalar(2.5));
+	//	m_bodies.push_back(createRigidBody(btScalar(1.0), transform, capsule));
 	//}
 
 	//// Now setup the constraints
@@ -218,10 +255,9 @@ ArticulatedRagDoll::~ArticulatedRagDoll()
 	int i;
 
 	// Remove all constraints
-	for (i = 0; i < m_joints.size(); ++i)
+	for (auto joint : m_jointConstraints)
 	{
-		m_ownerWorld->removeConstraint(m_joints[i]);
-		delete m_joints[i]; m_joints[i] = 0;
+		m_ownerWorld->removeConstraint(joint.second);
 	}
 
 	// Remove all bodies and shapes
@@ -233,5 +269,16 @@ ArticulatedRagDoll::~ArticulatedRagDoll()
 
 		delete m_bodies[i]; m_bodies[i] = 0;
 		delete m_shapes[i]; m_shapes[i] = 0;
+	}
+}
+
+void ArticulatedRagDoll::UpdateJointPositions(int frameIndex)
+{
+	unordered_map<string, btVector3> jointPositions;
+	m_skeletalMotion->GetJointPositionsByName(jointPositions, 0, frameIndex, true);
+
+	for (auto joint : jointPositions)
+	{
+		m_jointKinematicMotionStates[joint.first]->setKinematicPos(btTransform(btMatrix3x3::getIdentity(), joint.second));
 	}
 }
