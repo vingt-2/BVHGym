@@ -35,6 +35,8 @@ public:
 	~ArticulatedRagDoll();
 
 	void UpdateJointPositions(int frameIndex);
+	
+	//vector<pair<btVector3, btVector3>> GetJointToBodiesSegments(int frameIndex);
 
 private:
 	SkeletalMotion*						m_skeletalMotion;
@@ -46,7 +48,10 @@ private:
 		btTypedConstraint*>				m_jointConstraints;
 
 	std::unordered_map<std::string,
-		KinematicMotionState*>					m_jointKinematicMotionStates;
+		KinematicMotionState*>			m_jointKinematicMotionStates;
+
+	std::unordered_map<std::string,
+		btRigidBody*>					m_jointKinematicBody;
 
 	btRigidBody* createRigidBody(btScalar mass, const btTransform& startTransform, btCollisionShape* shape);
 };

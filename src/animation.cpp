@@ -118,3 +118,41 @@ unordered_map<string, btTransform>* cumulativeTransformsByName
 		cumulativeTransformsByName
 	);
 }
+
+void SkeletonJoint::QuerySkeleton(unordered_map<string, SkeletonJoint*>* jointPointersByNames, vector<pair<string, string>>* bonesByJointNames)
+{
+	if (jointPointersByNames)
+	{
+		if (jointPointersByNames->find(m_name) == jointPointersByNames->end())
+			jointPointersByNames->emplace(m_name, this);
+	}
+
+	for (auto child : m_childJoints)
+	{
+		if (bonesByJointNames)
+		{
+			bonesByJointNames->push_back(pair<string, string>(m_name, child->GetName()));
+		}
+
+		child->QuerySkeleton(jointPointersByNames, bonesByJointNames);
+	}
+}
+
+void SkeletalAnimationPlayer::UpdatePlayer()
+{
+	float time = m_clock.getTimeSeconds();
+	float dt = time - m_lastTime;
+	if (dt > 0.1)
+		dt = 0.1;
+	m_lastTime = time;
+	if(m_playerState == IS_PLAYING)
+	{
+		m_currentAnimationFrame += dt * m_motionSpeed * m_skeletalMotion->GetSamplingRate();
+
+		if (m_currentAnimationFrame >= m_skeletalMotion->GetFrameCount())
+		{
+			m_currentAnimationFrame = m_skeletalMotion->GetFrameCount() - 1;
+			m_playerState = IS_WAITING_START;
+		}
+	}
+}

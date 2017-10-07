@@ -26,14 +26,14 @@ subject to the following restrictions:
 
 #include "bvh_gym.h"
 
-CommonExampleInterface*    example;
+CommonExampleInterface*    BVHGym;
 int gSharedMemoryKey = -1;
 
 b3MouseMoveCallback prevMouseMoveCallback = 0;
 static void OnMouseMove(float x, float y)
 {
 	bool handled = false;
-	handled = example->mouseMoveCallback(x, y);
+	handled = BVHGym->mouseMoveCallback(x, y);
 	if (!handled)
 	{
 		if (prevMouseMoveCallback)
@@ -45,11 +45,23 @@ b3MouseButtonCallback prevMouseButtonCallback = 0;
 static void OnMouseDown(int button, int state, float x, float y) {
 	bool handled = false;
 
-	handled = example->mouseButtonCallback(button, state, x, y);
+	handled = BVHGym->mouseButtonCallback(button, state, x, y);
 	if (!handled)
 	{
 		if (prevMouseButtonCallback)
 			prevMouseButtonCallback(button, state, x, y);
+	}
+}
+
+b3KeyboardCallback prevkeyboardButtonCallback = 0;
+static void OnKeyboardDown(int keycode, int state) {
+	bool handled = false;
+
+	handled = BVHGym->keyboardCallback(keycode, state);
+	if (!handled)
+	{
+		if (prevkeyboardButtonCallback)
+			prevkeyboardButtonCallback(keycode, state);
 	}
 }
 
@@ -69,7 +81,7 @@ public:
 };
 int main(int argc, char* argv[])
 {
-	SimpleOpenGL3App* app = new SimpleOpenGL3App("Bullet Standalone Example", 1024, 768, true);
+	SimpleOpenGL3App* app = new SimpleOpenGL3App("Christmas Tree Man", 1024, 768, true);
 
 	prevMouseButtonCallback = app->m_window->getMouseButtonCallback();
 	prevMouseMoveCallback = app->m_window->getMouseMoveCallback();
@@ -83,11 +95,13 @@ int main(int argc, char* argv[])
 	CommonExampleOptions options(&gui);
 
 
-	example = BVHGymCreateFunc(options);
-	example->processCommandLineArgs(argc, argv);
+	BVHGym = BVHGymCreateFunc(options);
+	BVHGym->processCommandLineArgs(argc, argv);
 
-	example->initPhysics();
-	example->resetCamera();
+	BVHGym->initPhysics();
+	BVHGym->resetCamera();
+
+	app->m_window->setKeyboardCallback((b3KeyboardCallback)OnKeyboardDown);
 
 	b3Clock clock;
 	float time = 0;
@@ -101,10 +115,10 @@ int main(int argc, char* argv[])
 		if (dtSec < 0.1)
 			dtSec = 0.1;
 
-		example->stepSimulation(dtSec);
+		BVHGym->stepSimulation(dtSec);
 		clock.reset();
 
-		example->renderScene();
+		BVHGym->renderScene();
 
 		DrawGridData dg;
 		dg.upAxis = app->getUpAxis();
@@ -113,8 +127,8 @@ int main(int argc, char* argv[])
 		app->swapBuffer();
 	} while (!app->m_window->requestedExit());
 
-	example->exitPhysics();
-	delete example;
+	BVHGym->exitPhysics();
+	delete BVHGym;
 	delete app;
 	return 0;
 }

@@ -3,6 +3,7 @@
 */
 
 #include "bvh_gym.h"
+#include <iostream>
 
 void BVHGym::ResetCamera()
 {
@@ -15,24 +16,21 @@ void BVHGym::ResetCamera()
 
 void BVHGym::initPhysics()
 {
-	m_skeletalMotion = SkeletalMotion::BVHImport("01_04.bvh");
+	m_animationPlayer = new SkeletalAnimationPlayer();
+
+	SetBVHAnimation(SkeletalMotion::BVHImport("01_04.bvh"));
 
 	m_guiHelper->setUpAxis(1);
 
 	createEmptyDynamicsWorld();
-	//m_dynamicsWorld->setGravity(btVector3(0,0,0));
+
 	m_guiHelper->createPhysicsDebugDrawer(m_dynamicsWorld);
 
 	if (m_dynamicsWorld->getDebugDrawer())
 		m_dynamicsWorld->getDebugDrawer()->setDebugMode(btIDebugDraw::DBG_DrawWireframe+btIDebugDraw::DBG_DrawContactPoints);
 
-	///create a few basic rigid bodies
-	btBoxShape* groundShape = createBoxShape(btVector3(btScalar(50.),btScalar(50.),btScalar(50.)));
-	
-
-	groundShape->initializePolyhedralFeatures();
-	//btCollisionShape* groundShape = new btStaticPlaneShape(btVector3(0,1,0),50);
-	
+	///Create Ground
+	btBoxShape* groundShape = createBoxShape(btVector3(btScalar(50.),btScalar(50.),btScalar(50.)));	
 	m_collisionShapes.push_back(groundShape);
 
 	btTransform groundTransform;
@@ -71,29 +69,35 @@ void BVHGym::renderScene()
 
 	CommonRigidBodyBase::renderScene();
 
-	int animationFrame = m_clock.getTimeSeconds() * m_skeletalMotion->GetSamplingRate();
-	if (animationFrame >= m_skeletalMotion->GetFrameCount())
-	{
-		m_clock.reset();
-		animationFrame = m_clock.getTimeSeconds() * m_skeletalMotion->GetSamplingRate();
-	}
-	
+	m_animationPlayer->UpdatePlayer();
+
+	int animationFrame = m_animationPlayer->GetCurrentAnimationFrame();
+
 	std::vector < std::pair<btVector3, btVector3>> segments;
-	m_skeletalMotion->QuerySkeletalAnimation(animationFrame, 0, false, NULL, NULL, &segments, NULL);
+	m_skeletalMotion->QuerySkeletalAnimation(animationFrame, 0, true, NULL, NULL, &segments, NULL);
 	for (auto verticePair : segments)
 	{
 		m_dynamicsWorld->getDebugDrawer()->drawLine(verticePair.first, verticePair.second, { 1, 0, 0 });
 	}
 	
-
 	std::vector<btVector3> positions;
-	m_skeletalMotion->QuerySkeletalAnimation(animationFrame, 0, false, &positions, NULL, NULL, NULL);
+	m_skeletalMotion->QuerySkeletalAnimation(animationFrame, 0, true, &positions, NULL, NULL, NULL);
 	for (auto position : positions)
 	{
-		m_dynamicsWorld->getDebugDrawer()->drawSphere(position, 1, { 1, 0, 0 });
+		m_dynamicsWorld->getDebugDrawer()->drawSphere(position, 0.3, { 1, 0, 0 });
 	}
 
-	//m_articulatedRagdoll->UpdateJointPositions(animationFrame);
+
+	/*animationFrame = m_clock.getTimeSeconds() * m_skeletalMotion->GetSamplingRate();
+	if (animationFrame >= m_skeletalMotion->GetFrameCount())
+	{
+		m_clock.reset();
+		animationFrame = m_clock.getTimeSeconds() * m_skeletalMotion->GetSamplingRate();
+	}*/
+
+	m_articulatedRagdoll->UpdateJointPositions(animationFrame);
+
+	ClearKeyPressed();
 }
 
 
