@@ -18,7 +18,9 @@ void BVHGym::initPhysics()
 {
 	m_animationPlayer = new SkeletalAnimationPlayer();
 
-	SetBVHAnimation(SkeletalMotion::BVHImport("test.bvh"));
+	SetBVHAnimation(SkeletalMotion::BVHImport("ben_raise_gun_heavier.bvh"));
+
+	m_skeletalMotion->SetScale(0.1f);
 
 	m_guiHelper->setUpAxis(1);
 
