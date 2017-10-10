@@ -37,29 +37,12 @@ void BVHGym::initPhysics()
 	groundTransform.setIdentity();
 	groundTransform.setOrigin(btVector3(0,-50,0));
 
-	{
-		btScalar mass(0.);
-		createRigidBody(mass,groundTransform,groundShape, btVector4(0,0,1,1));
-	}
+	createRigidBody(0.0f,groundTransform,groundShape, btVector4(0,0,1,1));
 
+	// Create Ragdoll
+	m_articulatedRagdoll = new RagdollWithKinematicBodiesConstraints(m_dynamicsWorld, m_skeletalMotion, 0, btVector3(), 1);
 
-	{
-		int size = 16;
-
-		float sizeX = 1.f;
-		float sizeY = 1.f;
-
-		//int rc=0;
-
-		btScalar scale(3.5);
-		btVector3 pos(0.0f, sizeY, 0.0f);
-		
-		m_articulatedRagdoll = new RagdollWithKinematicBodiesConstraints(m_dynamicsWorld, m_skeletalMotion, 0, btVector3(), 1);
-	}
-
-	
-	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);
-	
+	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);	
 }
 
 
@@ -72,8 +55,6 @@ void BVHGym::renderScene()
 	m_animationPlayer->UpdatePlayer();
 
 	int animationFrame = m_animationPlayer->GetCurrentAnimationFrame();
-
-	//std::cout << "Frame " << animationFrame << " out of " << m_skeletalMotion->GetFrameCount() << ".\n";
 
 	std::vector < std::pair<btVector3, btVector3>> segments;
 	m_skeletalMotion->QuerySkeletalAnimation(animationFrame, 0, true, NULL, NULL, &segments, NULL);
