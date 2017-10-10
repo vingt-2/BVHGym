@@ -2,7 +2,7 @@ BVH Gym
 ===================================
 
 ![demo](bvh_gym_demo.gif)
-
+![demo](chritmas_tree_person.gif)
 ===================================
 
 Load BVH animation file and plays animation on an articulated ragdoll in the bullet physics engine.
