@@ -23,40 +23,7 @@ using namespace std;
 #define M_PI_4     btScalar(0.785398163397448309616)
 #endif
 
-btMatrix3x3 RotationMatrix(int axis, btScalar angle)
-{
-	angle *= M_PI / 180.0;
-
-	if (axis == 0)
-	{
-		return btMatrix3x3
-			(
-			1, 0, 0,
-			0, cos(angle), -sin(angle),
-			0, sin(angle), cos(angle)
-			);
-	}
-	else if (axis == 1)
-	{
-		return btMatrix3x3
-			(
-			cos(angle), 0, sin(angle),
-			0, 1, 0,
-			-sin(angle), 0, cos(angle)
-			);
-	}
-	else if (axis == 2)
-	{
-		return btMatrix3x3
-			(
-			cos(angle), -sin(angle), 0,
-			sin(angle), cos(angle), 0,
-			-0, 0, 1
-			);
-	}
-}
-
-btRigidBody* ArticulatedRagDoll::createRigidBody(btScalar mass, const btTransform& startTransform, btCollisionShape* shape)
+btRigidBody* RagdollWithKinematicBodiesConstraints::createRigidBody(btScalar mass, const btTransform& startTransform, btCollisionShape* shape)
 {
 	bool isDynamic = (mass != 0.f);
 
@@ -74,36 +41,15 @@ btRigidBody* ArticulatedRagDoll::createRigidBody(btScalar mass, const btTransfor
 	return body;
 }
 
-btMatrix3x3 upLookAt(btVector3& direction)
-{
-	// compute the forward vector
-	btVector3 up = direction;
-	up.normalize();
-
-	// compute temporal up vector based on the forward vector
-	// watch out when look up/down at 90 degree
-	// for example, forward vector is on the Y axis
-	btVector3 left = btVector3(0, 1, 0);;
-
-	// compute the left vector
-	btVector3 forward = up.cross(left);  // cross product
-	forward.normalize();
-
-	// re-calculate the orthonormal up vector
-	left = up.cross(forward);  // cross product
-	left.normalize();
-
-	return btMatrix3x3(left[0], left[1], left[2], up[0], up[1], up[2], forward[0], forward[1], forward[2]);
-}
-
-ArticulatedRagDoll::ArticulatedRagDoll(
+RagdollWithKinematicBodiesConstraints::RagdollWithKinematicBodiesConstraints(
 	btDynamicsWorld* ownerWorld,
 	SkeletalMotion* skeletalMotion,
 	int skeletonIndex,
 	const btVector3& positionOffset,
 	btScalar scale)
-: m_ownerWorld(ownerWorld), m_skeletalMotion(skeletalMotion)
 {
+	m_ownerWorld = ownerWorld;
+	m_skeletalMotion = skeletalMotion;
 	unordered_map<string, btVector3> jointPositionsByNames;
 	unordered_map<string, btTransform> jointTransformsByNames;
 	m_skeletalMotion->QuerySkeletalAnimation(0, 0, true, NULL, &jointPositionsByNames, NULL, &jointTransformsByNames);
@@ -126,7 +72,7 @@ ArticulatedRagDoll::ArticulatedRagDoll(
 		m_ownerWorld->addRigidBody(kinematicJointBody);
 	}
 
-
+	// Capsule dude
 	for (auto bone : bonesByJointNames)
 	{
 		string parentJointName = bone.first;
@@ -136,41 +82,101 @@ ArticulatedRagDoll::ArticulatedRagDoll(
 		btVector3 childPosition = jointPositionsByNames[childJointName];
 
 
-		float segmentLength = parentPosition.distance(childPosition);
+		// Comput look at rotation to align the capsule 
+		btQuaternion localOrn = btQuaternion::getIdentity();
 
-		//btCapsuleShape* shape = new btCapsuleShape(0.1, segmentLength);
+		btVector3 diff = childPosition - parentPosition;
+		btScalar lenSqr = diff.length2();
+		btScalar height = 0.f;
 
-		btBoxShape* shape = new btBoxShape(segmentLength*btVector3(0.1, 0.1, 0.1));
+		if (lenSqr > 1.192092896e-07F)
+		{
+			height = btSqrt(lenSqr);
+			btVector3 ax = diff / height;
 
-		m_shapes.push_back(shape);
+			btVector3 zAxis(0, 0, 1);
+			localOrn = shortestArcQuat(zAxis, ax);
+		}
+		btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(0.08*height, 0.6*height);
 
-		btTransform transform = jointTransformsByNames[parentJointName];
-		transform.setOrigin(0.5 * (parentPosition + childPosition));
+		btTransform localTransform(localOrn, 0.5*(childPosition + parentPosition));
+		
+		m_shapes.push_back(capsuleShape);
 
-		btRigidBody* rigidBody = createRigidBody(btScalar(10.0), transform, shape);
+		btRigidBody* rigidBody = createRigidBody(btScalar(10.0), localTransform, capsuleShape);
 
 		rigidBody->setDamping(btScalar(0.3), btScalar(0.85));
 		rigidBody->setDeactivationTime(btScalar(2));
 		rigidBody->setSleepingThresholds(btScalar(0), btScalar(0));
-		rigidBody->setCollisionFlags(btCollisionObject::CF_NO_CONTACT_RESPONSE);
+		//rigidBody->setCollisionFlags(btCollisionObject::CF_NO_CONTACT_RESPONSE);
 		m_bodies.push_back(rigidBody);
 
-		btPoint2PointConstraint* childToJointContraint = new btPoint2PointConstraint(*m_jointKinematicBody[parentJointName], *rigidBody, btVector3(0, 0, 0), transform.inverse()*parentPosition);
+		btPoint2PointConstraint* childToJointContraint = new btPoint2PointConstraint(*m_jointKinematicBody[parentJointName], *rigidBody, btVector3(0, 0, 0), localTransform.inverse()*parentPosition);
+		btPoint2PointConstraint* childToChildJointContraint = new btPoint2PointConstraint(*m_jointKinematicBody[childJointName], *rigidBody, btVector3(0, 0, 0), localTransform.inverse()*childPosition);
 
-		m_jointConstraints[parentJointName] = childToJointContraint;
+		m_jointConstraints.push_back(childToJointContraint);
+		m_jointConstraints.push_back(childToChildJointContraint);
 		m_ownerWorld->addConstraint(childToJointContraint);
+		m_ownerWorld->addConstraint(childToChildJointContraint);
+	}
 
+	// Christmas tree person !
+//	for (auto bone : bonesByJointNames)
+//	{
+//		string parentJointName = bone.first;
+//		string childJointName = bone.second;
+//
+//		btVector3 parentPosition = jointPositionsByNames[parentJointName];
+//		btVector3 childPosition = jointPositionsByNames[childJointName];
+//
+//
+//		float segmentLength = parentPosition.distance(childPosition);
+//
+//		//btCapsuleShape* shape = new btCapsuleShape(0.1, segmentLength);
+//
+//		btBoxShape* shape = new btBoxShape(segmentLength*btVector3(0.1, 0.1, 0.1));
+//
+//		m_shapes.push_back(shape);
+//
+//		btTransform transform = jointTransformsByNames[parentJointName];
+//		transform.setOrigin(0.5 * (parentPosition + childPosition));
+//
+//		btRigidBody* rigidBody = createRigidBody(btScalar(10.0), transform, shape);
+//
+//		rigidBody->setDamping(btScalar(0.3), btScalar(0.85));
+//		rigidBody->setDeactivationTime(btScalar(2));
+//		rigidBody->setSleepingThresholds(btScalar(0), btScalar(0));
+//		//rigidBody->setCollisionFlags(btCollisionObject::CF_NO_CONTACT_RESPONSE);
+//		m_bodies.push_back(rigidBody);
+//
+//		btPoint2PointConstraint* childToJointContraint = new btPoint2PointConstraint(*m_jointKinematicBody[parentJointName], *rigidBody, btVector3(0, 0, 0), transform.inverse()*parentPosition);
+//
+//		m_jointConstraints.push_back(childToJointContraint);
+//		m_ownerWorld->addConstraint(childToJointContraint);
+//
+//	}
+}
+
+void RagdollWithKinematicBodiesConstraints::GetConstraintsJointPositions(vector<btVector3> &resultVector)
+{
+	for (auto constraint : m_jointConstraints)
+	{
+		btRigidBody rgbdA = constraint->getRigidBodyA();
+		btRigidBody rgbdB = constraint->getRigidBodyB();
+
+		resultVector.push_back(rgbdA.getWorldTransform() * constraint->getPivotInA());
+		resultVector.push_back(rgbdB.getWorldTransform() * constraint->getPivotInB());
 	}
 }
 
-ArticulatedRagDoll::~ArticulatedRagDoll()
+RagdollWithKinematicBodiesConstraints::~RagdollWithKinematicBodiesConstraints()
 {
 	int i;
 
 	// Remove all constraints
-	for (auto joint : m_jointConstraints)
+	for (auto constraint : m_jointConstraints)
 	{
-		m_ownerWorld->removeConstraint(joint.second);
+		m_ownerWorld->removeConstraint(constraint);
 	}
 
 	// Remove all bodies and shapes
@@ -185,7 +191,7 @@ ArticulatedRagDoll::~ArticulatedRagDoll()
 	}
 }
 
-void ArticulatedRagDoll::UpdateJointPositions(int frameIndex)
+void RagdollWithKinematicBodiesConstraints::UpdateJointPositions(int frameIndex)
 {
 	unordered_map<string, btVector3> jointPositions;
 	m_skeletalMotion->QuerySkeletalAnimation(frameIndex, 0, true, NULL, &jointPositions, NULL, NULL);
@@ -197,5 +203,15 @@ void ArticulatedRagDoll::UpdateJointPositions(int frameIndex)
 
 		if (m_jointKinematicMotionStates[joint.first])
 			m_jointKinematicMotionStates[joint.first]->setKinematicPos(btTransform(btMatrix3x3::getIdentity(), joint.second));
+	}
+}
+
+void RagdollWithKinematicBodiesConstraints::KillRagdoll()
+{
+	for (auto kinematicBody : m_jointKinematicBody)
+	{
+		kinematicBody.second->setCollisionFlags(0);
+		kinematicBody.second->setMotionState(new btDefaultMotionState(kinematicBody.second->getWorldTransform()));
+		kinematicBody.second->setMassProps(1.0, btVector3(1, 1, 1));
 	}
 }

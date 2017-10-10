@@ -110,7 +110,7 @@ public:
 
 	void InputKeyPressed(int keyPressed)
 	{
-		if (m_clock.getTimeSeconds() - m_lastInputTime < 0.5)
+		if (m_clock.getTimeSeconds() - m_lastInputTime < 0.2)
 		{
 			return;
 		}
@@ -188,7 +188,10 @@ public:
 		m_lastTime = m_clock.getTimeSeconds();
 		m_lastInputTime = m_clock.getTimeSeconds();
 		m_currentAnimationFrame = 0;
+		bIsCycleAnimation = true;
 	}
+
+	bool bIsCycleAnimation;
 
 private:
 

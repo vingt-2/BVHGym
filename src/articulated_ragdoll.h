@@ -19,39 +19,52 @@ protected:
 	btTransform mPos1;
 };
 
-class ArticulatedRagDoll
+class ArticulatedRagdoll
 {
 public:
+	virtual void UpdateJointPositions(int frameIndex) = 0;
 
+	virtual void GetConstraintsJointPositions(std::vector<btVector3> &resultVector) = 0;
 
+	virtual void KillRagdoll() = 0;
 
+protected:
+	SkeletalMotion*						m_skeletalMotion;
+	btDynamicsWorld*					m_ownerWorld;
+};
 
-	ArticulatedRagDoll( btDynamicsWorld* ownerWorld,
+class RagdollWithKinematicBodiesConstraints : public ArticulatedRagdoll
+{
+public:
+	RagdollWithKinematicBodiesConstraints(btDynamicsWorld* ownerWorld,
 						SkeletalMotion* skeletalMotion,
 						int skeletonIndex,
 						const btVector3& positionOffset, 
 						btScalar scale);
 
-	~ArticulatedRagDoll();
+	~RagdollWithKinematicBodiesConstraints();
 
-	void UpdateJointPositions(int frameIndex);
+	virtual void UpdateJointPositions(int frameIndex);
+	 
+	virtual void GetConstraintsJointPositions(std::vector<btVector3> &resultVector);
+
+	virtual void KillRagdoll();
 	
-	//vector<pair<btVector3, btVector3>> GetJointToBodiesSegments(int frameIndex);
-
 private:
-	SkeletalMotion*						m_skeletalMotion;
-	btDynamicsWorld*					m_ownerWorld;
 	std::vector<btCollisionShape*>		m_shapes;
 	std::vector<btRigidBody*>			m_bodies;
 
-	std::unordered_map<std::string, 
-		btTypedConstraint*>				m_jointConstraints;
+	std::vector<btPoint2PointConstraint*>	m_jointConstraints;
 
 	std::unordered_map<std::string,
-		KinematicMotionState*>			m_jointKinematicMotionStates;
+		KinematicMotionState*>				m_jointKinematicMotionStates;
 
 	std::unordered_map<std::string,
 		btRigidBody*>					m_jointKinematicBody;
 
+	btCompoundShape						m_compoundShape;
+
 	btRigidBody* createRigidBody(btScalar mass, const btTransform& startTransform, btCollisionShape* shape);
 };
+
+//class MultiBodyArticulatedRagdoll

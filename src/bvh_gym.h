@@ -53,7 +53,7 @@ struct BVHGym : public CommonRigidBodyBase
 private:
 	SkeletalAnimationPlayer* m_animationPlayer;
 	SkeletalMotion* m_skeletalMotion;
-	ArticulatedRagDoll* m_articulatedRagdoll;
+	ArticulatedRagdoll* m_articulatedRagdoll;
 	int m_keycode = -1;
 private:
 	btClock m_clock;

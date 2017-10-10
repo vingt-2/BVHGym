@@ -18,7 +18,7 @@ void BVHGym::initPhysics()
 {
 	m_animationPlayer = new SkeletalAnimationPlayer();
 
-	SetBVHAnimation(SkeletalMotion::BVHImport("01_04.bvh"));
+	SetBVHAnimation(SkeletalMotion::BVHImport("test.bvh"));
 
 	m_guiHelper->setUpAxis(1);
 
@@ -54,7 +54,7 @@ void BVHGym::initPhysics()
 		btScalar scale(3.5);
 		btVector3 pos(0.0f, sizeY, 0.0f);
 		
-		m_articulatedRagdoll = new ArticulatedRagDoll(m_dynamicsWorld, m_skeletalMotion, 0, btVector3(), 1);
+		m_articulatedRagdoll = new RagdollWithKinematicBodiesConstraints(m_dynamicsWorld, m_skeletalMotion, 0, btVector3(), 1);
 	}
 
 	
@@ -73,6 +73,8 @@ void BVHGym::renderScene()
 
 	int animationFrame = m_animationPlayer->GetCurrentAnimationFrame();
 
+	//std::cout << "Frame " << animationFrame << " out of " << m_skeletalMotion->GetFrameCount() << ".\n";
+
 	std::vector < std::pair<btVector3, btVector3>> segments;
 	m_skeletalMotion->QuerySkeletalAnimation(animationFrame, 0, true, NULL, NULL, &segments, NULL);
 	for (auto verticePair : segments)
@@ -87,13 +89,12 @@ void BVHGym::renderScene()
 		m_dynamicsWorld->getDebugDrawer()->drawSphere(position, 0.3, { 1, 0, 0 });
 	}
 
-
-	/*animationFrame = m_clock.getTimeSeconds() * m_skeletalMotion->GetSamplingRate();
-	if (animationFrame >= m_skeletalMotion->GetFrameCount())
-	{
-		m_clock.reset();
-		animationFrame = m_clock.getTimeSeconds() * m_skeletalMotion->GetSamplingRate();
-	}*/
+	//std::vector<btVector3> constraintPivots;
+	//m_articulatedRagdoll->GetConstraintsJointPositions(constraintPivots);
+	//for (auto position : constraintPivots)
+	//{
+	//	m_dynamicsWorld->getDebugDrawer()->drawSphere(position, 0.3, { 0, 1, 0 });
+	//}
 
 	m_articulatedRagdoll->UpdateJointPositions(animationFrame);
 
