@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <iostream>
 #include "CommonInterfaces/CommonRigidBodyBase.h"
+#include "CommonInterfaces\CommonMultiBodyBase.h"
 
 #include "btBulletDynamicsCommon.h"
 
@@ -13,10 +14,13 @@
 
 class CommonExampleInterface*    BVHGymCreateFunc(struct CommonExampleOptions& options);
 
-struct BVHGym : public CommonRigidBodyBase
+struct BVHGym : public CommonMultiBodyBase
 {
-	BVHGym(struct GUIHelperInterface* helper) : CommonRigidBodyBase(helper) 
-	{};
+	BVHGym(struct GUIHelperInterface* helper) : CommonMultiBodyBase(helper)
+	{
+		m_bDrawSkeleton = false;
+		m_bDrawCOMState = true;
+	};
 
 	virtual ~BVHGym(){}
 	virtual void initPhysics();
@@ -54,6 +58,13 @@ private:
 	SkeletalAnimationPlayer* m_animationPlayer;
 	SkeletalMotion* m_skeletalMotion;
 	ArticulatedRagdoll* m_articulatedRagdoll;
+	std::vector<btVector3> m_comPositions;
+	std::vector<btVector3> m_comVelocities;
+	std::vector<btVector3> m_angularMomentum;
+
+	bool m_bDrawSkeleton;
+	bool m_bDrawCOMState;
+
 	int m_keycode = -1;
 private:
 	btClock m_clock;

@@ -11,7 +11,7 @@ void PrintJointRecursive(SkeletonJoint* joint, int depth)
 		out += "_";
 	cout << out + joint->GetName() + "\n";
 
-	for (auto child : joint->GetChildrenPointers())
+	for (auto child : joint->GetDirectChildren())
 		PrintJointRecursive(child, depth + 1);
 }
 
@@ -26,6 +26,7 @@ void QuerySkeletalAnimationRecursive
 SkeletonJoint* joint,
 btTransform& cumulativeTransform,
 unordered_map<string, vector<btTransform>>& jointTransforms,
+float skeletonScale,
 /*Defines the query inputs*/
 int frameIndex,
 int skeletonIndex,
@@ -37,7 +38,7 @@ unordered_map<string, btTransform>* cumulativeTransformsByName
 )
 {
 	btVector3 jointPositionL = joint->GetLocalOffset();
-	btVector3 jointPositionW = cumulativeTransform * btVector4(jointPositionL[0], jointPositionL[1], jointPositionL[2], 1);
+	btVector3 jointPositionW = cumulativeTransform * btVector4(jointPositionL[0], jointPositionL[1], jointPositionL[2], 1) * skeletonScale;
 
 	if (cumulativeTransformsByName)
 	{
@@ -55,23 +56,24 @@ unordered_map<string, btTransform>* cumulativeTransformsByName
 	}
 
 	btTransform nextCumulativeTransform;
-	if (joint->GetChildrenPointers().size()) // Leaf joints do not have transforms, let's not try looking for them
+	if (joint->GetDirectChildren().size()) // Leaf joints do not have transforms, let's not try looking for them
 		nextCumulativeTransform = cumulativeTransform * jointTransforms[joint->GetName()][frameIndex];
 
-	for (auto child : joint->GetChildrenPointers())
+	for (auto child : joint->GetDirectChildren())
 	{
 		if (segmentPositions)
 		{
 			btVector3 childPositionL = child->GetLocalOffset();
-			btVector3 childPositionW = nextCumulativeTransform * btVector4(childPositionL[0], childPositionL[1], childPositionL[2], 1);
+			btVector3 childPositionW = nextCumulativeTransform * btVector4(childPositionL[0], childPositionL[1], childPositionL[2], 1) * skeletonScale;
 
-			segmentPositions->push_back(pair<btVector3, btVector3>(nextCumulativeTransform.getOrigin(), childPositionW));
+			segmentPositions->push_back(pair<btVector3, btVector3>(nextCumulativeTransform.getOrigin() * skeletonScale, childPositionW));
 		}
 
 		QuerySkeletalAnimationRecursive(
 			child,
 			nextCumulativeTransform,
 			jointTransforms,
+			skeletonScale,
 			frameIndex,
 			skeletonIndex,
 			jointPositions,
@@ -110,6 +112,7 @@ unordered_map<string, btTransform>* cumulativeTransformsByName
 		root, 
 		rootTransform, 
 		m_jointTransforms,
+		m_skeletonScale,
 		frameIndex, 
 		skeletonIndex,
 		jointPositions,
@@ -148,11 +151,26 @@ void SkeletalAnimationPlayer::UpdatePlayer()
 	if(m_playerState == IS_PLAYING)
 	{
 		m_currentAnimationFrame += dt * m_motionSpeed * m_skeletalMotion->GetSamplingRate();
-
 		if (m_currentAnimationFrame >= m_skeletalMotion->GetFrameCount())
 		{
-			m_currentAnimationFrame = m_skeletalMotion->GetFrameCount() - 1;
+			m_currentAnimationFrame = m_skeletalMotion->GetFrameCount();
+			std::cout << "Animation Ended. Press Enter to start over.\n";
 			m_playerState = IS_WAITING_START;
 		}
 	}
+}
+
+void SkeletalMotion::SetNormalizedScale()
+{
+	vector<btVector3> jointPositions;
+	QuerySkeletalAnimation(0, 0, false, &jointPositions, NULL, NULL, NULL);
+
+	float maxLength = 0;
+	for (btVector3 position : jointPositions)
+	{
+		if (maxLength < position.length())
+			maxLength = position.length();
+	}
+
+	m_skeletonScale = 1.0f / maxLength;
 }

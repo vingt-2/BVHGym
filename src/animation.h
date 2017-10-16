@@ -23,12 +23,12 @@ public:
 
 	~SkeletonJoint() {};
 
-	string GetName()		{ return m_name;		}
-	btVector3 GetLocalOffset()	{ return m_localOffset; }
-	
-	vector<SkeletonJoint*> GetChildrenPointers() { return m_childJoints; }
-	
-	void QuerySkeleton(unordered_map<string, SkeletonJoint*>* jointPointersByNames, vector<pair<string,string>>* bonesByJointNames);
+	string		GetName()			{ return m_name; }
+	btVector3	GetLocalOffset()	{ return m_localOffset; }
+	void		ApplyOffsetNormalization(float normalizer)	{ m_localOffset /= normalizer; }
+	vector<SkeletonJoint*> GetDirectChildren()	{ return m_childJoints; }
+
+	void QuerySkeleton(unordered_map<string, SkeletonJoint*>* jointPointersByNames, vector<pair<string, string>>* bonesByJointNames);
 
 	void PrintJoint();
 
@@ -43,26 +43,27 @@ class SkeletalMotion
 public:
 
 	SkeletalMotion(
-	string name,
-	vector<vector<btVector3>> rootTrajectories,
-	unordered_map<string, vector<btTransform>> jointTransforms,
-	vector<SkeletonJoint*> skeletonRoots,
-	float samplingRate,
-	int	  frameCount) 
+		string name,
+		vector<vector<btVector3>> rootTrajectories,
+		unordered_map<string, vector<btTransform>> jointTransforms,
+		vector<SkeletonJoint*> skeletonRoots,
+		float samplingRate,
+		int	  frameCount)
 	{
 		m_name = name;
-		m_rootTrajectories	= rootTrajectories;
-		m_jointTransforms	= jointTransforms;
-		m_skeletonRoots		= skeletonRoots;
-		m_samplingRate		= samplingRate;
-		m_frameCount		= frameCount;
+		m_rootTrajectories = rootTrajectories;
+		m_jointTransforms = jointTransforms;
+		m_skeletonRoots = skeletonRoots;
+		m_samplingRate = samplingRate;
+		m_frameCount = frameCount;
+		m_skeletonScale = 1.0f;
 	};
 
 	~SkeletalMotion();
 
-	string GetName()		{ return m_name;			}
-	float GetSamplingRate() { return m_samplingRate;	}
-	int GetFrameCount()		{ return m_frameCount;		}
+	string GetName()		{ return m_name; }
+	float GetSamplingRate() { return m_samplingRate; }
+	int GetFrameCount()		{ return m_frameCount; }
 	SkeletonJoint* GetRoot(int index){ return m_skeletonRoots[index]; }
 
 	void QuerySkeletalAnimation
@@ -78,16 +79,27 @@ public:
 		unordered_map<string, btTransform>* cumulativeTransformsByName = NULL
 	);
 
+	void SetNormalizedScale();
+
+	void SetScale(float scale) { m_skeletonScale = scale; }
+
+	btTransform GetLocalTransformByName(std::string name, int frameIndex) 
+	{
+		btTransform tr = m_jointTransforms[name][frameIndex];
+		//tr.setOrigin(tr.getOrigin() * m_skeletonScale);
+		return tr;
+	}
+
 private:
 	string m_name;
-	vector<vector<btVector3>> m_rootTrajectories;
-	unordered_map<string,
-		vector<btTransform>>		m_jointTransforms;
+	vector<vector<btVector3>>		m_rootTrajectories;
+	unordered_map < string,
+		vector < btTransform >>		m_jointTransforms;
 
 	vector<SkeletonJoint*>			m_skeletonRoots;
-	float								m_samplingRate;
-	int									m_frameCount;
-
+	float							m_samplingRate;
+	int								m_frameCount;
+	float							m_skeletonScale;
 public:
 
 	static SkeletalMotion* BVHImport(string bvhFilePath);
@@ -96,16 +108,17 @@ public:
 class SkeletalAnimationPlayer
 {
 public:
-	int GetCurrentAnimationFrame() 
-	{ 
+	int GetCurrentAnimationFrame()
+	{
+		float result = m_currentAnimationFrame;
 		if (m_currentAnimationFrame < 0)
-			m_currentAnimationFrame = 0;
-		
+			result = 0;
+
 		if (m_currentAnimationFrame > m_skeletalMotion->GetFrameCount() - 1)
-			m_currentAnimationFrame = m_skeletalMotion->GetFrameCount() - 1;
+			result = m_skeletalMotion->GetFrameCount() - 1;
 
 
-		return (int)m_currentAnimationFrame; 
+		return (int)result;
 	}
 
 	void InputKeyPressed(int keyPressed)
@@ -120,7 +133,6 @@ public:
 			if (keyPressed == 0)
 			{
 				m_currentAnimationFrame = 0;
-				m_motionSpeed = 1;
 				m_playerState = IS_PLAYING;
 			}
 			else if (keyPressed == 1)

@@ -183,7 +183,7 @@ void ReadFrameRecursive(vector<string>& tokens,
 	unordered_map<string, vector<int>> &jointsChannelOrderings,
 	bool bIsRoot)
 {
-	if (!joint->GetChildrenPointers().size())
+	if (!joint->GetDirectChildren().size())
 		return;
 
 	btMatrix3x3 rotation = btMatrix3x3::getIdentity();
@@ -205,7 +205,7 @@ void ReadFrameRecursive(vector<string>& tokens,
 
 	currentToken += 3;
 
-	for (auto child : joint->GetChildrenPointers())
+	for (auto child : joint->GetDirectChildren())
 	{
 		ReadFrameRecursive(tokens, jointTransforms, child, currentToken, jointsChannelOrderings, false);
 	}
@@ -315,7 +315,30 @@ SkeletalMotion* SkeletalMotion::BVHImport(string bvhFilePath)
 	if (currentToken != tokens.size())
 		INVALID_BVH
 
-	return 	new SkeletalMotion(bvhFilePath, rootTrajectories, jointTransforms, skeletalRoots, 1.0 / frameTime, frameCount);
+	SkeletalMotion* result = new SkeletalMotion(bvhFilePath, rootTrajectories, jointTransforms, skeletalRoots, 1.0 / frameTime, frameCount);
+	
+	/*if (bNormalizedOffsets)
+	{
+		for (int i = 0; i < result->m_skeletonRoots.size(); i++)
+		{
+			unordered_map<string, SkeletonJoint*> joints;
+			result->m_skeletonRoots[i]->QuerySkeleton(&joints,NULL);
+			float maxOffsetLen = 0;
+			for (auto joint : joints)
+			{
+				btScalar length = joint.second->GetLocalOffset().length();
+				if (maxOffsetLen < length)
+					maxOffsetLen = length;
+			}
+			for (auto joint : joints)
+			{
+				joint.second->ApplyOffsetNormalization(maxOffsetLen);
+			}
+
+		}
+	}*/
+
+	return result;
 }
 
 btMatrix3x3 GetRotationMatrix(int axis, btScalar angle)

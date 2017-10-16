@@ -1,9 +1,8 @@
 #include "articulated_ragdoll.h"
 
-
 #include "LinearMath/btAlignedObjectArray.h"
+#include "BulletDynamics/Featherstone/btMultiBodyLinkCollider.h"
 #include "LinearMath/btTransform.h"
-
 #include "LinearMath/btVector3.h"
 
 #include <vector>
@@ -73,54 +72,6 @@ RagdollWithKinematicBodiesConstraints::RagdollWithKinematicBodiesConstraints(
 	}
 
 	// Capsule dude
-	//for (auto bone : bonesByJointNames)
-	//{
-	//	string parentJointName = bone.first;
-	//	string childJointName = bone.second;
-
-	//	btVector3 parentPosition = jointPositionsByNames[parentJointName];
-	//	btVector3 childPosition = jointPositionsByNames[childJointName];
-
-
-	//	// Comput look at rotation to align the capsule 
-	//	btQuaternion localOrn = btQuaternion::getIdentity();
-
-	//	btVector3 diff = childPosition - parentPosition;
-	//	btScalar lenSqr = diff.length2();
-	//	btScalar height = 0.f;
-
-	//	if (lenSqr > 1.192092896e-07F)
-	//	{
-	//		height = btSqrt(lenSqr);
-	//		btVector3 ax = diff / height;
-
-	//		btVector3 zAxis(0, 0, 1);
-	//		localOrn = shortestArcQuat(zAxis, ax);
-	//	}
-	//	btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(0.08*height, 0.6*height);
-
-	//	btTransform localTransform(localOrn, 0.5*(childPosition + parentPosition));
-	//	
-	//	m_shapes.push_back(capsuleShape);
-
-	//	btRigidBody* rigidBody = createRigidBody(btScalar(10.0), localTransform, capsuleShape);
-
-	//	rigidBody->setDamping(btScalar(0.3), btScalar(0.85));
-	//	rigidBody->setDeactivationTime(btScalar(2));
-	//	rigidBody->setSleepingThresholds(btScalar(0), btScalar(0));
-	//	//rigidBody->setCollisionFlags(btCollisionObject::CF_NO_CONTACT_RESPONSE);
-	//	m_bodies.push_back(rigidBody);
-
-	//	btPoint2PointConstraint* childToJointContraint = new btPoint2PointConstraint(*m_jointKinematicBody[parentJointName], *rigidBody, btVector3(0, 0, 0), localTransform.inverse()*parentPosition);
-	//	btPoint2PointConstraint* childToChildJointContraint = new btPoint2PointConstraint(*m_jointKinematicBody[childJointName], *rigidBody, btVector3(0, 0, 0), localTransform.inverse()*childPosition);
-
-	//	m_jointConstraints.push_back(childToJointContraint);
-	//	m_jointConstraints.push_back(childToChildJointContraint);
-	//	m_ownerWorld->addConstraint(childToJointContraint);
-	//	m_ownerWorld->addConstraint(childToChildJointContraint);
-	//}
-
-	// Christmas tree person !
 	for (auto bone : bonesByJointNames)
 	{
 		string parentJointName = bone.first;
@@ -130,31 +81,80 @@ RagdollWithKinematicBodiesConstraints::RagdollWithKinematicBodiesConstraints(
 		btVector3 childPosition = jointPositionsByNames[childJointName];
 
 
-		float segmentLength = parentPosition.distance(childPosition);
+		// Comput look at rotation to align the capsule 
+		btQuaternion localOrn = btQuaternion::getIdentity();
 
-		//btCapsuleShape* shape = new btCapsuleShape(0.1, segmentLength);
+		btVector3 diff = childPosition - parentPosition;
+		btScalar lenSqr = diff.length2();
+		btScalar height = 0.f;
 
-		btBoxShape* shape = new btBoxShape(segmentLength*btVector3(0.1, 0.1, 0.1));
+		if (lenSqr > 1.192092896e-07F)
+		{
+			height = btSqrt(lenSqr);
+			btVector3 ax = diff / height;
 
-		m_shapes.push_back(shape);
+			btVector3 zAxis(0, 0, 1);
+			localOrn = shortestArcQuat(zAxis, ax);
+		}
+		btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(0.07*height, 0.6*height);
+		m_masses.push_back(height);
+		btTransform localTransform(localOrn, 0.5*(childPosition + parentPosition));
+		
+		m_shapes.push_back(capsuleShape);
 
-		btTransform transform = jointTransformsByNames[parentJointName];
-		transform.setOrigin(0.5 * (parentPosition + childPosition));
+		btRigidBody* rigidBody = createRigidBody(btScalar(10.0), localTransform, capsuleShape);
 
-		btRigidBody* rigidBody = createRigidBody(btScalar(10.0), transform, shape);
+		m_compoundShape.addChildShape(localTransform, capsuleShape);
 
 		rigidBody->setDamping(btScalar(0.3), btScalar(0.85));
 		rigidBody->setDeactivationTime(btScalar(2));
 		rigidBody->setSleepingThresholds(btScalar(0), btScalar(0));
-		//rigidBody->setCollisionFlags(btCollisionObject::CF_NO_CONTACT_RESPONSE);
+		rigidBody->setCollisionFlags(btCollisionObject::CF_NO_CONTACT_RESPONSE);
 		m_bodies.push_back(rigidBody);
 
-		btPoint2PointConstraint* childToJointContraint = new btPoint2PointConstraint(*m_jointKinematicBody[parentJointName], *rigidBody, btVector3(0, 0, 0), transform.inverse()*parentPosition);
+		btPoint2PointConstraint* childToJointContraint = new btPoint2PointConstraint(*m_jointKinematicBody[parentJointName], *rigidBody, btVector3(0, 0, 0), localTransform.inverse()*parentPosition);
+		btPoint2PointConstraint* childToChildJointContraint = new btPoint2PointConstraint(*m_jointKinematicBody[childJointName], *rigidBody, btVector3(0, 0, 0), localTransform.inverse()*childPosition);
 
 		m_jointConstraints.push_back(childToJointContraint);
+		m_jointConstraints.push_back(childToChildJointContraint);
 		m_ownerWorld->addConstraint(childToJointContraint);
-
+		m_ownerWorld->addConstraint(childToChildJointContraint);
 	}
+
+	// Christmas tree person !
+	//for (auto bone : bonesByJointNames)
+	//{
+	//	string parentJointName = bone.first;
+	//	string childJointName = bone.second;
+
+	//	btVector3 parentPosition = jointPositionsByNames[parentJointName];
+	//	btVector3 childPosition = jointPositionsByNames[childJointName];
+
+
+	//	float segmentLength = parentPosition.distance(childPosition);
+
+	//	//btCapsuleShape* shape = new btCapsuleShape(0.1, segmentLength);
+
+	//	btBoxShape* shape = new btBoxShape(segmentLength*btVector3(0.1, 0.1, 0.1));
+	//	m_shapes.push_back(shape);
+
+	//	btTransform transform = jointTransformsByNames[parentJointName];
+	//	transform.setOrigin(0.5 * (parentPosition + childPosition));
+
+	//	btRigidBody* rigidBody = createRigidBody(btScalar(10.0), transform, shape);
+
+	//	rigidBody->setDamping(btScalar(0.3), btScalar(0.85));
+	//	rigidBody->setDeactivationTime(btScalar(2));
+	//	rigidBody->setSleepingThresholds(btScalar(0), btScalar(0));
+	//	//rigidBody->setCollisionFlags(btCollisionObject::CF_NO_CONTACT_RESPONSE);
+	//	m_bodies.push_back(rigidBody);
+
+	//	btPoint2PointConstraint* childToJointContraint = new btPoint2PointConstraint(*m_jointKinematicBody[parentJointName], *rigidBody, btVector3(0, 0, 0), transform.inverse()*parentPosition);
+
+	//	m_jointConstraints.push_back(childToJointContraint);
+	//	m_ownerWorld->addConstraint(childToJointContraint);
+
+	//}
 }
 
 void RagdollWithKinematicBodiesConstraints::GetConstraintsJointPositions(vector<btVector3> &resultVector)
@@ -204,6 +204,35 @@ void RagdollWithKinematicBodiesConstraints::UpdateJointPositions(int frameIndex)
 		if (m_jointKinematicMotionStates[joint.first])
 			m_jointKinematicMotionStates[joint.first]->setKinematicPos(btTransform(btMatrix3x3::getIdentity(), joint.second));
 	}
+
+	btCompoundShapeChild* children = m_compoundShape.getChildList();
+	for (int i = 0; i < m_bodies.size(); i++)
+	{
+		children[i].m_transform = m_bodies[i]->getWorldTransform();
+	}
+	btTransform principalAxes;
+	btVector3 inertia;
+	this->m_compoundShape.calculatePrincipalAxisTransform(&(m_masses[0]), principalAxes, inertia);
+
+	m_COMPosition = principalAxes.getOrigin();
+
+	m_angularMomentum = btVector3(0, 0, 0);
+
+	for (int i = 0; i < m_bodies.size(); i++)
+	{
+		btScalar mass = m_masses[i];
+		btVector3 bodyInertiaLocal;
+		children[i].m_childShape->calculateLocalInertia(mass, bodyInertiaLocal);
+
+		btVector3 bodyAngularVelocityLocal = m_bodies[i]->getWorldTransform().inverse() * m_bodies[i]->getAngularVelocity();
+
+		btVector3 bodyAngularMomentumWorld = m_bodies[i]->getWorldTransform() * (bodyInertiaLocal * bodyAngularVelocityLocal);
+
+		btVector3 bodyCOM = m_bodies[i]->getCenterOfMassPosition();
+
+		m_angularMomentum += (mass * bodyCOM.cross(m_bodies[i]->getLinearVelocity()) + bodyAngularMomentumWorld);
+	}
+
 }
 
 void RagdollWithKinematicBodiesConstraints::KillRagdoll()
@@ -215,3 +244,156 @@ void RagdollWithKinematicBodiesConstraints::KillRagdoll()
 		kinematicBody.second->setMassProps(1.0, btVector3(1, 1, 1));
 	}
 }
+
+
+MultiBodyArticulatedRagdoll::MultiBodyArticulatedRagdoll(
+	btMultiBodyDynamicsWorld* ownerWorld,
+	SkeletalMotion* skeletalMotion,
+	int skeletonIndex,
+	const btVector3& positionOffset,
+	btScalar scale)
+{
+	m_ownerWorld = ownerWorld;
+	m_skeletalMotion = skeletalMotion;
+	unordered_map<string, btVector3> jointPositionsByNames;
+	unordered_map<string, btVector3> jointPositionsByNamesWithOffset;
+	unordered_map<string, btTransform> jointTransformsByNames;
+	m_skeletalMotion->QuerySkeletalAnimation(0, 0, false, NULL, &jointPositionsByNames, NULL, &jointTransformsByNames);
+	m_skeletalMotion->QuerySkeletalAnimation(0, 0, true, NULL, &jointPositionsByNamesWithOffset, NULL, NULL);
+	
+	vector<pair<string, string>> bonesByJointNames;
+	unordered_map<string, SkeletonJoint*> jointsByNames;
+
+	m_skeletalMotion->GetRoot(0)->QuerySkeleton(&jointsByNames, &bonesByJointNames);
+
+	int currentLink = 0;
+	for (auto bone : bonesByJointNames)
+	{
+		m_linkIndicesByName[bone.first + bone.second] = currentLink++;
+	}
+
+	//init the base	
+	btVector3 baseInertiaDiag(0.f, 0.f, 0.f);
+	float baseMass = 1.f;
+
+	if (baseMass)
+	{
+		btCollisionShape *pTempBox = new btBoxShape(btVector3(5,5,5));
+		pTempBox->calculateLocalInertia(baseMass, baseInertiaDiag);
+		delete pTempBox;
+	}
+
+	int numLinks = jointPositionsByNames.size();
+
+	bool canSleep = false;
+	bool fixedBase = false;
+
+	m_multiBody = new btMultiBody(jointPositionsByNames.size(), baseMass, baseInertiaDiag, fixedBase, canSleep);
+	
+	m_multiBody->setBasePos(jointPositionsByNamesWithOffset[m_skeletalMotion->GetRoot(0)->GetName()]);
+
+	for (auto bone : bonesByJointNames)
+	{
+
+		string startJointName = bone.first;
+		string endJointName = bone.second;
+
+		// Get parent bone:
+		pair<string, string> parentBone = pair<string, string>("World", m_skeletalMotion->GetRoot(0)->GetName());
+		for (auto currentBone : bonesByJointNames)
+		{
+			if (currentBone.second == startJointName)
+				parentBone = currentBone;
+		}
+
+		if (!parentBone.first.compare("World"))
+		{
+			btVector3 currentPivotToCurrentCOM = 0.5*jointsByNames[endJointName]->GetLocalOffset();
+
+			btTransform parentToChildTransform = m_skeletalMotion->GetLocalTransformByName(startJointName, 0);
+
+			int linkIndex = m_linkIndicesByName[bone.first + bone.second];
+			int parentLinkIndex = -1;
+
+			m_multiBody->setupSpherical(linkIndex, 0, btVector3(0,0,0), parentLinkIndex, parentToChildTransform.getRotation().inverse(), jointPositionsByNames[startJointName], currentPivotToCurrentCOM);
+		}
+		else
+		{
+			btVector3 parentCOMToCurrentPivot = 0.5*jointsByNames[startJointName]->GetLocalOffset();
+			btVector3 currentPivotToCurrentCOM = 0.5*jointsByNames[endJointName]->GetLocalOffset();
+
+			btTransform parentToChildTransform = m_skeletalMotion->GetLocalTransformByName(startJointName, 0);
+
+			int linkIndex = m_linkIndicesByName[bone.first + bone.second];
+			int parentLinkIndex = m_linkIndicesByName[parentBone.first + parentBone.second];
+
+			m_multiBody->setupSpherical(linkIndex, 0, btVector3(0, 0, 0), parentLinkIndex, parentToChildTransform.getRotation().inverse(), parentCOMToCurrentPivot, currentPivotToCurrentCOM);
+		}
+	}
+
+	m_multiBody->finalizeMultiDof();
+	ownerWorld->addMultiBody(m_multiBody);
+	
+	for (auto bone : bonesByJointNames)
+	{
+		string parentJointName = bone.first;
+		string childJointName = bone.second;
+
+		btVector3 parentPosition = btVector3(0, 0, 0);
+		btVector3 childPosition = jointsByNames[childJointName]->GetLocalOffset();
+
+
+		//// Comput look at rotation to align the capsule 
+		//btQuaternion localOrn = btQuaternion::getIdentity();
+
+		//btVector3 diff = childPosition - parentPosition;
+		//btScalar lenSqr = diff.length2();
+		//btScalar height = 0.f;
+
+		//if (lenSqr > 1.192092896e-07F)
+		//{
+		//	height = btSqrt(lenSqr);
+		//	btVector3 ax = diff / height;
+
+		//	btVector3 zAxis(0, 0, 1);
+		//	localOrn = shortestArcQuat(zAxis, ax);
+		//}
+		//btCapsuleShapeZ* shape = new btCapsuleShapeZ(0.1*height, 0.6*height);
+		//
+		btTransform localTransform = btTransform::getIdentity();//btTransform(localOrn, btVector3(0, 0, 0));
+		float length = (childPosition - parentPosition).length();
+		//btBoxShape* shape = new btBoxShape(btVector3(0.1*length, 0.1*length, 0.1*length));
+
+		btSphereShape* shape = new btSphereShape(0.1);
+
+		btMultiBodyLinkCollider* col = new btMultiBodyLinkCollider(m_multiBody, m_linkIndicesByName[bone.first + bone.second]);
+
+		col->setCollisionShape(shape);
+
+		col->setWorldTransform(localTransform);
+
+		ownerWorld->addCollisionObject(col, 2, 1 + 2);
+		col->setFriction(0.1f);
+		m_multiBody->getLink(m_linkIndicesByName[bone.first + bone.second]).m_collider = col;
+		m_multiBody->getLink(m_linkIndicesByName[bone.first + bone.second]).m_collider->setWorldTransform(localTransform);
+	}
+}
+
+void MultiBodyArticulatedRagdoll::UpdateJointPositions(int frameIndex)
+{
+	unordered_map<string, btTransform> jointTranforms;
+	m_skeletalMotion->QuerySkeletalAnimation(frameIndex, 0, true, NULL, NULL, NULL, &jointTranforms);
+	m_multiBody->setBaseWorldTransform(jointTranforms[m_skeletalMotion->GetRoot(0)->GetName()]);
+	
+	vector<pair<string, string>> bonesByName;
+	m_skeletalMotion->GetRoot(0)->QuerySkeleton(NULL, &bonesByName);
+	for (auto bone : bonesByName)
+	{
+		btQuaternion jointRotation = m_skeletalMotion->GetLocalTransformByName(bone.first, frameIndex).getRotation();
+		m_multiBody->setJointPosMultiDof(m_linkIndicesByName[bone.first + bone.second], jointRotation);
+	}
+}
+
+void MultiBodyArticulatedRagdoll::GetConstraintsJointPositions(std::vector<btVector3> &resultVector){}
+
+void MultiBodyArticulatedRagdoll::KillRagdoll(){}
