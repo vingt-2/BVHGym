@@ -86,10 +86,8 @@ public:
 	btTransform GetLocalTransformByName(std::string name, int frameIndex) 
 	{
 		btTransform tr = m_jointTransforms[name][frameIndex];
-		//tr.setOrigin(tr.getOrigin() * m_skeletonScale);
 		return tr;
 	}
-
 private:
 	string m_name;
 	vector<vector<btVector3>>		m_rootTrajectories;
@@ -116,7 +114,6 @@ public:
 
 		if (m_currentAnimationFrame > m_skeletalMotion->GetFrameCount() - 1)
 			result = m_skeletalMotion->GetFrameCount() - 1;
-
 
 		return (int)result;
 	}

@@ -11,15 +11,19 @@
 using namespace std;
 
 #ifndef M_PI
-#define M_PI       btScalar(3.14159265358979323846)
+#define M_PI		btScalar(3.14159265358979323846)
 #endif
 
 #ifndef M_PI_2
-#define M_PI_2     btScalar(1.57079632679489661923)
+#define M_PI_2		btScalar(1.57079632679489661923)
 #endif
 
 #ifndef M_PI_4
-#define M_PI_4     btScalar(0.785398163397448309616)
+#define M_PI_4		btScalar(0.785398163397448309616)
+#endif
+
+#ifndef EPSILON
+#define EPSILON		1.192092896e-07F
 #endif
 
 btRigidBody* RagdollWithKinematicBodiesConstraints::createRigidBody(btScalar mass, const btTransform& startTransform, btCollisionShape* shape)
@@ -88,7 +92,7 @@ RagdollWithKinematicBodiesConstraints::RagdollWithKinematicBodiesConstraints(
 		btScalar lenSqr = diff.length2();
 		btScalar height = 0.f;
 
-		if (lenSqr > 1.192092896e-07F)
+		if (lenSqr > 1.192092896e-07F + EPSILON)
 		{
 			height = btSqrt(lenSqr);
 			btVector3 ax = diff / height;
@@ -97,7 +101,8 @@ RagdollWithKinematicBodiesConstraints::RagdollWithKinematicBodiesConstraints(
 			localOrn = shortestArcQuat(zAxis, ax);
 		}
 		btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(0.07*height, 0.6*height);
-		m_masses.push_back(height);
+
+		m_masses.push_back(height + EPSILON);
 		btTransform localTransform(localOrn, 0.5*(childPosition + parentPosition));
 		
 		m_shapes.push_back(capsuleShape);
@@ -135,11 +140,14 @@ RagdollWithKinematicBodiesConstraints::RagdollWithKinematicBodiesConstraints(
 
 	//	//btCapsuleShape* shape = new btCapsuleShape(0.1, segmentLength);
 
-	//	btBoxShape* shape = new btBoxShape(segmentLength*btVector3(0.1, 0.1, 0.1));
-	//	m_shapes.push_back(shape);
-
 	//	btTransform transform = jointTransformsByNames[parentJointName];
 	//	transform.setOrigin(0.5 * (parentPosition + childPosition));
+
+	//	btBoxShape* shape = new btBoxShape(segmentLength*btVector3(0.1, 0.1, 0.1));
+
+	//	m_shapes.push_back(shape);
+
+	//  m_compoundShape.addChildShape(transform, capsuleShape);
 
 	//	btRigidBody* rigidBody = createRigidBody(btScalar(10.0), transform, shape);
 

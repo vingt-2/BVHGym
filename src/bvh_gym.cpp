@@ -23,8 +23,6 @@ void BVHGym::initPhysics()
 
 	SetBVHAnimation(SkeletalMotion::BVHImport("111_02.bvh"));// 91_61.bvh")); 
 
-	//m_skeletalMotion->SetScale(0.1f);
-
 	m_guiHelper->setUpAxis(1);
 
 	createEmptyDynamicsWorld();
