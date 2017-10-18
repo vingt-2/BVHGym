@@ -174,3 +174,8 @@ void SkeletalMotion::SetNormalizedScale()
 
 	m_skeletonScale = 1.0f / maxLength;
 }
+
+SkeletalMotion::~SkeletalMotion()
+{
+
+}

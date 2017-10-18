@@ -232,7 +232,7 @@ SkeletalMotion* SkeletalMotion::BVHImport(string bvhFilePath)
 		{
 			bvhFile.close();
 
-			INVALID_BVH
+			std::cout << "Could not open " << bvhFilePath << "\n";
 		}
 		bvhFile.close();
 

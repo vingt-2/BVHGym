@@ -16,21 +16,24 @@ class CommonExampleInterface*    BVHGymCreateFunc(struct CommonExampleOptions& o
 
 struct BVHGym : public CommonMultiBodyBase
 {
-	BVHGym(struct GUIHelperInterface* helper) : CommonMultiBodyBase(helper)
-	{
-		m_bDrawSkeleton = false;
-		m_bDrawCOMState = true;
-	};
+	BVHGym(struct GUIHelperInterface* helper);
 
-	virtual ~BVHGym(){}
+	virtual ~BVHGym();
 	virtual void initPhysics();
 	virtual void renderScene();
+	virtual void processCommandLineArgs(int argc, char** argv);
+
 	void ResetCamera();
 
-	void SetBVHAnimation(SkeletalMotion* motion)
+	bool SetBVHAnimation(SkeletalMotion* motion)
 	{
+		if (motion == NULL)
+		{
+			return false;
+		}
 		m_animationPlayer->SetSkeletalMotion(motion);
 		m_skeletalMotion = motion;
+		return true;
 	}
 
 	bool keyboardCallback(int keycode, int state)
@@ -54,6 +57,8 @@ struct BVHGym : public CommonMultiBodyBase
 
 	void ClearKeyPressed() { m_keycode = -1; }
 
+	bool IsTerminating() { return m_bShouldTerminate; }
+
 private:
 	SkeletalAnimationPlayer* m_animationPlayer;
 	SkeletalMotion* m_skeletalMotion;
@@ -66,6 +71,9 @@ private:
 	bool m_bDrawCOMState;
 
 	int m_keycode = -1;
+
+	bool m_bShouldTerminate;
+	
 private:
 	btClock m_clock;
 };

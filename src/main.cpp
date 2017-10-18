@@ -26,14 +26,14 @@ subject to the following restrictions:
 
 #include "bvh_gym.h"
 
-CommonExampleInterface*    BVHGym;
+CommonExampleInterface*    bvhGym;
 int gSharedMemoryKey = -1;
 
 b3MouseMoveCallback prevMouseMoveCallback = 0;
 static void OnMouseMove(float x, float y)
 {
 	bool handled = false;
-	handled = BVHGym->mouseMoveCallback(x, y);
+	handled = bvhGym->mouseMoveCallback(x, y);
 	if (!handled)
 	{
 		if (prevMouseMoveCallback)
@@ -45,7 +45,7 @@ b3MouseButtonCallback prevMouseButtonCallback = 0;
 static void OnMouseDown(int button, int state, float x, float y) {
 	bool handled = false;
 
-	handled = BVHGym->mouseButtonCallback(button, state, x, y);
+	handled = bvhGym->mouseButtonCallback(button, state, x, y);
 	if (!handled)
 	{
 		if (prevMouseButtonCallback)
@@ -57,7 +57,7 @@ b3KeyboardCallback prevkeyboardButtonCallback = 0;
 static void OnKeyboardDown(int keycode, int state) {
 	bool handled = false;
 
-	handled = BVHGym->keyboardCallback(keycode, state);
+	handled = bvhGym->keyboardCallback(keycode, state);
 	if (!handled)
 	{
 		if (prevkeyboardButtonCallback)
@@ -95,11 +95,29 @@ int main(int argc, char* argv[])
 	CommonExampleOptions options(&gui);
 
 
-	BVHGym = BVHGymCreateFunc(options);
-	BVHGym->processCommandLineArgs(argc, argv);
+	bvhGym = BVHGymCreateFunc(options);
+	bvhGym->processCommandLineArgs(argc, argv);
 
-	BVHGym->initPhysics();
-	BVHGym->resetCamera();
+	if (BVHGym* pGym = dynamic_cast<BVHGym*>(bvhGym))
+	{
+		if (pGym->IsTerminating())
+		{
+			delete bvhGym;
+			delete app;
+			return 0;
+		}
+	}
+	else
+	{
+		std::cout << "Unexpected Error \n";
+
+		delete bvhGym;
+		delete app;
+		return 0;
+	}
+
+	bvhGym->initPhysics();
+	bvhGym->resetCamera();
 
 	app->m_window->setKeyboardCallback((b3KeyboardCallback)OnKeyboardDown);
 
@@ -115,10 +133,10 @@ int main(int argc, char* argv[])
 		if (dtSec < 0.1)
 			dtSec = 0.1;
 
-		BVHGym->stepSimulation(dtSec);
+		bvhGym->stepSimulation(dtSec);
 		clock.reset();
 
-		BVHGym->renderScene();
+		bvhGym->renderScene();
 
 		DrawGridData dg;
 		dg.upAxis = app->getUpAxis();
@@ -127,8 +145,8 @@ int main(int argc, char* argv[])
 		app->swapBuffer();
 	} while (!app->m_window->requestedExit());
 
-	BVHGym->exitPhysics();
-	delete BVHGym;
+	bvhGym->exitPhysics();
+	delete bvhGym;
 	delete app;
 	return 0;
 }

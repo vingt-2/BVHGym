@@ -53,13 +53,13 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions);GLEW_STATIC;</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Users\vingt-2\Desktop\Bullet\bullet3\src;C:\Users\vingt-2\Desktop\Bullet\bullet3\btgui;C:\Users\vingt-2\Desktop\Bullet\bullet3\examples;C:\Users\vingt-2\Desktop\Bullet\bullet3\examples\ThirdPartyLibs\Glew;C:\Users\vingt-2\Desktop\Bullet\bullet3\btgui\OpenGLWindow\GlewWindows</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Vincent\Desktop\Bullet\bullet3\src;C:\Users\Vincent\Desktop\Bullet\bullet3\btgui;C:\Users\Vincent\Desktop\Bullet\bullet3\examples;C:\Users\Vincent\Desktop\Bullet\bullet3\examples\ThirdPartyLibs\Glew;C:\Users\Vincent\Desktop\Bullet\bullet3\btgui\OpenGLWindow\GlewWindows</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>..\bullets binaries\lib\Debug\BulletDynamics_Debug.lib;..\bullets binaries\lib\Debug\BulletCollision_Debug.lib;..\bullets binaries\lib\Debug\LinearMath_Debug.lib;..\bullets binaries\lib\Debug\OpenGLWindow_Debug.lib;..\bullets binaries\lib\Debug\Bullet3Common_Debug.lib;opengl32.lib;glu32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\bullet binaries\lib\Debug\BulletDynamics_Debug.lib;..\bullet binaries\lib\Debug\BulletCollision_Debug.lib;..\bullet binaries\lib\Debug\LinearMath_Debug.lib;..\bullet binaries\lib\Debug\OpenGLWindow_Debug.lib;..\bullet binaries\lib\Debug\Bullet3Common_Debug.lib;opengl32.lib;glu32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -71,7 +71,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions);GLEW_STATIC</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>C:\Users\vingt-2\Desktop\Bullet\bullet3\src;C:\Users\vingt-2\Desktop\Bullet\bullet3\btgui;C:\Users\vingt-2\Desktop\Bullet\bullet3\examples;C:\Users\vingt-2\Desktop\Bullet\bullet3\examples\ThirdPartyLibs\Glew;C:\Users\vingt-2\Desktop\Bullet\bullet3\btgui\OpenGLWindow\GlewWindows</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\Vincent\Desktop\Bullet\bullet3\src;C:\Users\Vincent\Desktop\Bullet\bullet3\btgui;C:\Users\Vincent\Desktop\Bullet\bullet3\examples;C:\Users\Vincent\Desktop\Bullet\bullet3\examples\ThirdPartyLibs\Glew;C:\Users\Vincent\Desktop\Bullet\bullet3\btgui\OpenGLWindow\GlewWindows</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -79,7 +79,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>..\bullets binaries\lib\Release\BulletDynamics.lib;..\bullets binaries\lib\Release\BulletCollision.lib;..\bullets binaries\lib\Release\LinearMath.lib;..\bullets binaries\lib\Release\OpenGLWindow.lib;..\bullets binaries\lib\Release\Bullet3Common.lib;opengl32.lib;glu32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\bullet binaries\lib\Release\BulletDynamics.lib;..\bullet binaries\lib\Release\BulletCollision.lib;..\bullet binaries\lib\Release\LinearMath.lib;..\bullet binaries\lib\Release\OpenGLWindow.lib;..\bullet binaries\lib\Release\Bullet3Common.lib;opengl32.lib;glu32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

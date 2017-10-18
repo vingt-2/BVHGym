@@ -17,12 +17,23 @@ void BVHGym::ResetCamera()
 	m_guiHelper->resetCamera(dist, yaw, pitch, targetPos[0], targetPos[1], targetPos[2]);
 }
 
+BVHGym::BVHGym(struct GUIHelperInterface* helper) : CommonMultiBodyBase(helper)
+{
+	m_bDrawSkeleton = false;
+	m_bDrawCOMState = true;
+	m_bShouldTerminate = false;
+
+	m_animationPlayer = new SkeletalAnimationPlayer();
+};
+
+BVHGym::~BVHGym()
+{
+	delete m_skeletalMotion;
+	delete m_animationPlayer;
+}
+
 void BVHGym::initPhysics()
 {
-	m_animationPlayer = new SkeletalAnimationPlayer();
-
-	SetBVHAnimation(SkeletalMotion::BVHImport("111_02.bvh"));// 91_61.bvh")); 
-
 	m_guiHelper->setUpAxis(1);
 
 	createEmptyDynamicsWorld();
@@ -49,6 +60,15 @@ void BVHGym::initPhysics()
 	m_guiHelper->autogenerateGraphicsObjects(m_dynamicsWorld);	
 }
 
+void BVHGym::processCommandLineArgs(int argc, char* argv[])
+{
+	bool bAnimationLoaded = SetBVHAnimation(SkeletalMotion::BVHImport("test.bvh"));
+
+	if (!bAnimationLoaded)
+	{
+		m_bShouldTerminate = true;
+	}
+}
 
 void BVHGym::renderScene()
 {
