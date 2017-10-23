@@ -107,6 +107,9 @@ unordered_map<string, btTransform>* cumulativeTransformsByName
 	if (addRootOffset)
 		rootTransform.setOrigin(m_rootTrajectories[frameIndex][skeletonIndex]);
 
+	// Build world pose of the skeleton by traversing the skeleton recursively and fetching joint rotation at the right frame.
+	// fills out provided containers while traversing
+
 	QuerySkeletalAnimationRecursive
 	(
 		root, 
@@ -124,6 +127,8 @@ unordered_map<string, btTransform>* cumulativeTransformsByName
 
 void SkeletonJoint::QuerySkeleton(unordered_map<string, SkeletonJoint*>* jointPointersByNames, vector<pair<string, string>>* bonesByJointNames)
 {
+	// Traverse skeleton recursively and fill out provided containers.
+
 	if (jointPointersByNames)
 	{
 		if (jointPointersByNames->find(m_name) == jointPointersByNames->end())
