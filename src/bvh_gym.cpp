@@ -1,6 +1,41 @@
 /*
-	Altered sources of the BasicExample to get a GUI up and running quickly
+	BVHGYM: Loads and plays skeletal animation in a physically simulated environment
+	Copyright(C) 2017 Vincent Petrella
+
+	This program is free software : you can redistribute it and / or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program.If not, see <https://www.gnu.org/licenses/>.
+
+	////// Bullet license information
+
+		Bullet Continuous Collision Detection and Physics Library
+		Copyright (c) 2003-2007 Erwin Coumans  http://bulletphysics.com
+
+		This software is provided 'as-is', without any express or implied warranty.
+		In no event will the authors be held liable for any damages arising from the use of this software.
+		Permission is granted to anyone to use this software for any purpose,
+		including commercial applications, and to alter it and redistribute it freely,
+		subject to the following restrictions:
+
+		1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software.
+		If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
+		2. Altered source versions must be plainly marked as such, and must not be misrepresented as being the original software.
+		3. This notice may not be removed or altered from any source distribution.
+
+	//////
 */
+
+
+//	Altered sources of the BasicExample to get a GUI up and running quickly
 
 #include "bvh_gym.h"
 #include <iostream>
@@ -70,18 +105,24 @@ void BVHGym::processCommandLineArgs(int argc, char* argv[])
 	}
 }
 
+// This is the Frame Update point of entry, we update the animation player, the physics, and the debug drawings in here.
 void BVHGym::renderScene()
 {
+	// Remove previously setup debug draw calls
 	m_dynamicsWorld->getDebugDrawer()->flushLines();
 
+	// Update Animation Player
 	m_animationPlayer->UpdatePlayer();
 
+	// Query which animation frame we shall be playing
 	int animationFrame = m_animationPlayer->GetCurrentAnimationFrame();
 
+	// Update our articulated physics object to the specified animation frame.
 	m_articulatedRagdoll->UpdateJointPositions(animationFrame);
 
 	CommonMultiBodyBase::renderScene();
 
+	// Fill out the center of mass positions buffer
 	if (m_comPositions.size())
 	{
 		if(m_comPositions[m_comPositions.size() - 1] != m_articulatedRagdoll->GetCOMPosition())
@@ -92,11 +133,12 @@ void BVHGym::renderScene()
 
 	if (m_comPositions.size() > 1)
 	{
-		m_comVelocities.push_back(m_comPositions[m_comPositions.size() - 1] - m_comPositions[m_comPositions.size() - 2]);
+		m_comVelocities.push_back((m_comPositions[m_comPositions.size() - 1] - m_comPositions[m_comPositions.size() - 2]) * m_skeletalMotion->GetSamplingRate());
 		btVector3 totalAngularMomentum = m_articulatedRagdoll->GetCOMAngularMomentum() - m_articulatedRagdoll->GetTotalMass()*m_comPositions[m_comPositions.size()].cross(m_comPositions[m_comPositions.size()]);
 		m_angularMomentum.push_back(totalAngularMomentum);
 	}
 
+	// Should we draw the skeleton, if yes draw segments as red lines and joints as red ballz
 	if (m_bDrawSkeleton)
 	{
 		std::vector < std::pair<btVector3, btVector3>> segments;
@@ -114,6 +156,7 @@ void BVHGym::renderScene()
 		}
 	}
 
+	// Should we draw the center of mass state (Position trail, velocity and angular momentum).
 	if (m_bDrawCOMState)
 	{
 		int trailSize = 200;
@@ -135,12 +178,13 @@ void BVHGym::renderScene()
 			btVector3 velocityDrawStart = m_comPositions[m_comPositions.size() - 1];
 			velocityDrawStart.setY(0);
 
-			m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + 10 * smoothVelocityEstimate, { 1, 0, 0 });
+			m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + smoothVelocityEstimate, { 1, 0, 0 });
 
 			m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + smoothAngularMomentumEstimate, { 0, 1, 0 });
 
-			// Draw Center of mass on actual position and also projected on y=0
+			// Draw Center of mass on actual position
 			m_dynamicsWorld->getDebugDrawer()->drawSphere(m_comPositions[m_comPositions.size() - 1], 0.3, { 1, 1, 1 });
+			// and also projected on y=0
 			m_dynamicsWorld->getDebugDrawer()->drawSphere(velocityDrawStart, 0.3, { 1, 0, 0 });
 		}
 	}
