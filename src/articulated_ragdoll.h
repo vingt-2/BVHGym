@@ -73,6 +73,11 @@ public:
 
 	virtual float		GetTotalMass() = 0;
 
+
+	// For debug, remove later
+	std::vector<btVector3>					m_debugBodiesMomentum;
+	std::vector<btVector3>					m_debugBodyCOMs;
+
 protected:
 	SkeletalMotion*						m_skeletalMotion;
 	btDynamicsWorld*					m_ownerWorld;
@@ -102,18 +107,21 @@ public:
 	virtual float		GetTotalMass()
 	{
 		float mass = 0;
-		for (auto m : m_masses)
+		for (int i = 0; i < m_masses.size(); i++)
 		{
-			mass += m;
+			mass += m_masses[i];
 		}
 		return mass;
 	}
+
+	// For debug, remove later
 	
 private:
 	std::vector<btCollisionShape*>			m_shapes;
 	std::vector<btRigidBody*>				m_bodies;
 	std::vector<float>						m_masses;
 	std::vector<btPoint2PointConstraint*>	m_jointConstraints;
+
 
 	std::unordered_map<std::string,
 		KinematicMotionState*>				m_jointKinematicMotionStates;

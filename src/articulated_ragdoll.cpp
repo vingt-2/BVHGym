@@ -262,18 +262,32 @@ void RagdollWithKinematicBodiesConstraints::UpdateJointPositions(int frameIndex)
 
 	m_angularMomentum = btVector3(0, 0, 0);
 
+	m_debugBodiesMomentum.clear();
+	m_debugBodyCOMs.clear();
+
+	float totalMass = GetTotalMass();
 	for (int i = 0; i < m_bodies.size(); i++)
 	{
-		btScalar mass = m_masses[i];
+		btScalar mass = m_masses[i] / totalMass;
 		btVector3 bodyInertiaLocal;
 		children[i].m_childShape->calculateLocalInertia(mass, bodyInertiaLocal);
 
-		btVector3 bodyAngularVelocityLocal = m_bodies[i]->getWorldTransform().inverse() * m_bodies[i]->getAngularVelocity();
+		btTransform bodyToWorldRotation = btTransform::getIdentity();
+		bodyToWorldRotation.setRotation(m_bodies[i]->getWorldTransform().getRotation());
 
-		btVector3 bodyAngularMomentumWorld = m_bodies[i]->getWorldTransform() * (bodyInertiaLocal * bodyAngularVelocityLocal);
+		btVector3 bodyAngularVelocityLocal = bodyToWorldRotation.inverse() * m_bodies[i]->getAngularVelocity();
+
+		btVector3 angularMomentumLocal(bodyInertiaLocal.getX() * bodyAngularVelocityLocal.getX(), bodyInertiaLocal.getY() * bodyAngularVelocityLocal.getY(), bodyInertiaLocal.getZ() * bodyAngularVelocityLocal.getZ());
+
+		btVector3 bodyAngularMomentumWorld = (bodyToWorldRotation * angularMomentumLocal);
+		
+		m_debugBodiesMomentum.push_back(bodyAngularMomentumWorld);
 
 		btVector3 bodyCOM = m_bodies[i]->getCenterOfMassPosition();
 
+		m_debugBodyCOMs.push_back(bodyCOM);
+
+		// We kinda want the angular momentum af the center of mass... So bodyCOM x w is 0...
 		m_angularMomentum += (mass * bodyCOM.cross(m_bodies[i]->getLinearVelocity()) + bodyAngularMomentumWorld);
 	}
 

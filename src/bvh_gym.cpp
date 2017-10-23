@@ -134,7 +134,7 @@ void BVHGym::renderScene()
 	if (m_comPositions.size() > 1)
 	{
 		m_comVelocities.push_back((m_comPositions[m_comPositions.size() - 1] - m_comPositions[m_comPositions.size() - 2]) * m_skeletalMotion->GetSamplingRate());
-		btVector3 totalAngularMomentum = m_articulatedRagdoll->GetCOMAngularMomentum() - m_articulatedRagdoll->GetTotalMass()*m_comPositions[m_comPositions.size()].cross(m_comPositions[m_comPositions.size()]);
+		btVector3 totalAngularMomentum = m_articulatedRagdoll->GetCOMAngularMomentum() - m_articulatedRagdoll->GetTotalMass()*m_comPositions[m_comPositions.size() - 1].cross(m_comVelocities[m_comVelocities.size() - 1]);
 		m_angularMomentum.push_back(totalAngularMomentum);
 	}
 
@@ -186,6 +186,13 @@ void BVHGym::renderScene()
 			m_dynamicsWorld->getDebugDrawer()->drawSphere(m_comPositions[m_comPositions.size() - 1], 0.3, { 1, 1, 1 });
 			// and also projected on y=0
 			m_dynamicsWorld->getDebugDrawer()->drawSphere(velocityDrawStart, 0.3, { 1, 0, 0 });
+		}
+
+		for (int i = 0; i < m_articulatedRagdoll->m_debugBodyCOMs.size(); i++)
+		{
+			btVector3 com = m_articulatedRagdoll->m_debugBodyCOMs[i];
+			btVector3 mom = m_articulatedRagdoll->m_debugBodiesMomentum[i];
+			m_dynamicsWorld->getDebugDrawer()->drawLine(com, com + 10*mom, { 1, 0, 0 });
 		}
 	}
 
