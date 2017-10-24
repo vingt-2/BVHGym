@@ -62,10 +62,18 @@ using namespace std;
 #define EPSILON		1.192092896e-07F
 #endif
 
-void UpdateCOMBuffer(btVector3 &com, btVector3 *buffer)
+void InitializeCOMBuffer(std::vector<btVector3> &buffer, int size)
+{
+	for (int i = 0; i < size; i++)
+	{
+		buffer.push_back(btVector3(0, 0, 0));
+	}
+}
+
+void UpdateCOMBuffer(btVector3 &com, std::vector<btVector3> &buffer)
 {
 	btVector3 lastValue = buffer[0];
-	for (int i = 0; i < SMOOTHING_WINDOW_SIZE - 1; i++)
+	for (int i = 0; i < buffer.size() - 1; i++)
 	{
 		btVector3 tmpValue = buffer[i + 1];
 		buffer[i + 1] = lastValue;
@@ -75,18 +83,18 @@ void UpdateCOMBuffer(btVector3 &com, btVector3 *buffer)
 	buffer[0] = com;
 }
 
-btVector3 SmoothedBuffer(btVector3 *buffer)
+btVector3 SmoothedBuffer(std::vector<btVector3> &buffer)
 {
 	// ASSUMING SMOOTHING_WINDOW_SIZE 4
 	//return 0.5*buffer[0] + 0.3*buffer[1] + 0.1*buffer[2] + 0.1*buffer[3];
 	btVector3 result(0, 0, 0);
 
-	for (int i = 0; i < SMOOTHING_WINDOW_SIZE; i++)
+	for (int i = 0; i < buffer.size(); i++)
 	{
 		result += buffer[i];
 	}
 
-	return (result / SMOOTHING_WINDOW_SIZE);
+	return (result / (float)buffer.size());
 }
 
 btVector3 RagdollWithKinematicBodiesConstraints::GetSmoothCOMVelocity()
@@ -129,6 +137,11 @@ RagdollWithKinematicBodiesConstraints::RagdollWithKinematicBodiesConstraints(
 	const btVector3& positionOffset,
 	btScalar scale)
 {
+	InitializeCOMBuffer(m_COMPositions, POSITION_SMOOTHING_WINDOW_SIZE);
+	InitializeCOMBuffer(m_COMVelocities, VELOCITY_SMOOTHING_WINDOW_SIZE);
+	InitializeCOMBuffer(m_angularMomentums, VELOCITY_SMOOTHING_WINDOW_SIZE);
+	InitializeCOMBuffer(m_COMAccelerations, ACCELERATION_SMOOTHING_WINDOW_SIZE);
+
 	m_lastTime = m_clock.getTimeSeconds();
 	m_ownerWorld = ownerWorld;
 	m_skeletalMotion = skeletalMotion;
@@ -181,12 +194,14 @@ RagdollWithKinematicBodiesConstraints::RagdollWithKinematicBodiesConstraints(
 		}
 		btCapsuleShapeZ* capsuleShape = new btCapsuleShapeZ(0.07*height, 0.6*height);
 
-		m_masses.push_back(height + EPSILON);
+		float mass = height + EPSILON;
+
+		m_masses.push_back(mass);
 		btTransform localTransform(localOrn, 0.5*(childPosition + parentPosition));
 		
 		m_shapes.push_back(capsuleShape);
 
-		btRigidBody* rigidBody = createRigidBody(btScalar(10.0), localTransform, capsuleShape);
+		btRigidBody* rigidBody = createRigidBody(mass, localTransform, capsuleShape);
 
 		m_compoundShape.addChildShape(localTransform, capsuleShape);
 
@@ -242,6 +257,16 @@ RagdollWithKinematicBodiesConstraints::RagdollWithKinematicBodiesConstraints(
 	//	m_ownerWorld->addConstraint(childToJointContraint);
 
 	//}
+
+
+	// Normalize Total Mass (helps visualizing quantities)
+	float totalMass = GetTotalMass();
+	for (int i = 0; i < m_bodies.size(); i++)
+	{
+		m_bodies[i]->setMassProps(m_masses[i] / totalMass, m_bodies[i]->getLocalInertia());
+		m_masses[i] = m_masses[i] / totalMass;
+	}
+
 }
 
 void RagdollWithKinematicBodiesConstraints::GetConstraintsJointPositions(vector<btVector3> &resultVector)
@@ -309,20 +334,27 @@ void RagdollWithKinematicBodiesConstraints::UpdateJointPositions(int frameIndex)
 
 	UpdateCOMBuffer(principalAxes.getOrigin(), m_COMPositions);
 
-	UpdateCOMBuffer((0.8*(m_COMPositions[0] - m_COMPositions[1]) + 0.2*(m_COMPositions[2] - m_COMPositions[3])) / deltaTime, m_COMVelocities);
-
-	UpdateCOMBuffer((m_COMPositions[0] - 2 * m_COMPositions[1] + m_COMPositions[2]) / (deltaTime*deltaTime), m_COMAccelerations);
-
 	btVector3 totalAngularMomentum(0, 0, 0);
 
 	m_debugBodiesMomentum.clear();
 	m_debugBodyCOMs.clear();
-
-	// Now let us compute the total Angular Momentum;
-	float totalMass = GetTotalMass();
+	btVector3 oldSmoothVelocity = GetSmoothCOMVelocity();
+	btVector3 comLinearVelocity(0,0,0);
 	for (int i = 0; i < m_bodies.size(); i++)
 	{
-		btScalar mass = m_masses[i] / totalMass;
+		// Total Mass normalized, so massFraction = mass of body
+		btScalar massFraction = m_masses[i];
+		comLinearVelocity += m_bodies[i]->getLinearVelocity() * massFraction;
+	}
+	UpdateCOMBuffer(comLinearVelocity, m_COMVelocities);
+
+	btVector3 linearAcceleration(0,0,0);
+
+	// Now let us compute the total Angular Momentum;
+	for (int i = 0; i < m_bodies.size(); i++)
+	{
+		btScalar mass = m_masses[i];
+
 		btVector3 bodyInertiaLocal;
 		children[i].m_childShape->calculateLocalInertia(mass, bodyInertiaLocal);
 
@@ -340,12 +372,18 @@ void RagdollWithKinematicBodiesConstraints::UpdateJointPositions(int frameIndex)
 		m_debugBodyCOMs.push_back(bodyCOM);
 
 		btVector3 bodyCOMFromTotalCOM = bodyCOM - GetCOMPosition();
-		btVector3 bodyVelFromTotalVel = m_bodies[i]->getLinearVelocity() - GetCOMVelocity();
+		btVector3 bodyVelFromTotalVel = m_bodies[i]->getLinearVelocity() - comLinearVelocity;
 
 		totalAngularMomentum += mass * (bodyCOMFromTotalCOM.cross(bodyVelFromTotalVel));
+
+		linearAcceleration += m_bodies[i]->getTotalForce(); // * massFraction / mass = * 1
 	}
 
 	UpdateCOMBuffer(totalAngularMomentum, m_angularMomentums);
+
+	//UpdateCOMBuffer(linearAcceleration, m_COMAccelerations);
+
+	UpdateCOMBuffer((GetSmoothCOMVelocity() - oldSmoothVelocity) / deltaTime, m_COMAccelerations);
 }
 
 void RagdollWithKinematicBodiesConstraints::KillRagdoll()

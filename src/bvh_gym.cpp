@@ -174,25 +174,26 @@ void BVHGym::renderScene()
 				m_dynamicsWorld->getDebugDrawer()->drawLine(m_comPositions[i], m_comPositions[i + 1], { 1, 1, 1 });
 			}
 
-			btVector3 velocityDrawStart = m_comPositions[m_comPositions.size() - 1];
-			velocityDrawStart.setY(0);
+			btVector3 comPosition = m_comPositions[m_comPositions.size() - 1];
+			btVector3 projectedCOMPosition = comPosition;
+			projectedCOMPosition.setY(0);
 
 			// Draw Center of mass on actual position
-			m_dynamicsWorld->getDebugDrawer()->drawSphere(m_comPositions[m_comPositions.size() - 1], 0.3, { 1, 1, 1 });
+			m_dynamicsWorld->getDebugDrawer()->drawSphere(comPosition, 0.3, { 1, 1, 1 });
 			// and also projected on y=0
-			m_dynamicsWorld->getDebugDrawer()->drawSphere(velocityDrawStart, 0.3, { 1, 0, 0 });
+			m_dynamicsWorld->getDebugDrawer()->drawSphere(projectedCOMPosition, 0.3, { 1, 0, 0 });
 		
 			// Draw Velocity, Acceleration and Angular Momentum
-			m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + m_articulatedRagdoll->GetSmoothCOMVelocity(), { 1, 0, 0 });
-			//m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + m_articulatedRagdoll->GetSmoothCOMAcceleration(), { 0, 0, 1 });
-			m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + m_articulatedRagdoll->GetSmoothCOMAngularMomentum(), { 0, 1, 0 });
+			m_dynamicsWorld->getDebugDrawer()->drawLine(projectedCOMPosition, projectedCOMPosition + m_articulatedRagdoll->GetSmoothCOMVelocity(), { 1, 0, 0 });
+			m_dynamicsWorld->getDebugDrawer()->drawLine(projectedCOMPosition, projectedCOMPosition + m_articulatedRagdoll->GetSmoothCOMAcceleration(), { 0, 0, 1 });
+			m_dynamicsWorld->getDebugDrawer()->drawLine(projectedCOMPosition, projectedCOMPosition + m_articulatedRagdoll->GetSmoothCOMAngularMomentum(), { 0, 1, 0 });
 		}
 
 		for (int i = 0; i < m_articulatedRagdoll->m_debugBodyCOMs.size(); i++)
 		{
 			btVector3 com = m_articulatedRagdoll->m_debugBodyCOMs[i];
 			btVector3 mom = m_articulatedRagdoll->m_debugBodiesMomentum[i];
-			m_dynamicsWorld->getDebugDrawer()->drawLine(com, com + 10*mom, { 1, 0, 0 });
+			m_dynamicsWorld->getDebugDrawer()->drawLine(com, com + 10*mom, { 0, 1, 0 });
 		}
 	}
 

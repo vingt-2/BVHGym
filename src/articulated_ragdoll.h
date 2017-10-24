@@ -143,12 +143,14 @@ private:
 
 	btRigidBody* createRigidBody(btScalar mass, const btTransform& startTransform, btCollisionShape* shape);
 
-#define SMOOTHING_WINDOW_SIZE 32
+#define POSITION_SMOOTHING_WINDOW_SIZE 1
+#define VELOCITY_SMOOTHING_WINDOW_SIZE 16
+#define ACCELERATION_SMOOTHING_WINDOW_SIZE 32
 
-	btVector3 m_COMPositions[SMOOTHING_WINDOW_SIZE];
-	btVector3 m_COMVelocities[SMOOTHING_WINDOW_SIZE];
-	btVector3 m_COMAccelerations[SMOOTHING_WINDOW_SIZE];
-	btVector3 m_angularMomentums[SMOOTHING_WINDOW_SIZE];
+	std::vector<btVector3> m_COMPositions;
+	std::vector<btVector3> m_COMVelocities;
+	std::vector<btVector3> m_angularMomentums;
+	std::vector<btVector3> m_COMAccelerations;
 
 	btClock m_clock;
 	float m_lastTime;
