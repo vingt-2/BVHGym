@@ -156,6 +156,11 @@ public:
 	void SetNormalizedScale();
 
 	/*
+		Compute and set a normalizing scale, with a multiplier applied (for visualization)
+	*/
+	void SetNormalizedScaleWithMultiplier(float scaleCoeff);
+
+	/*
 		Sets the scale of positions information retrieved.
 	*/
 	void SetScale(float scale) { m_skeletonScale = scale; }

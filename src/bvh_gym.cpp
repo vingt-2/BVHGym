@@ -43,6 +43,18 @@
 #define MAX(a,b) a > b ? a : b
 #define MIN(a,b) a < b ? a : b
 
+bool FindArgInArgv(string arg,int argc, char* argv[])
+{
+	for(int i = 1 ; i < argc; i++)
+	{
+		if (!arg.compare(string(argv[i])))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 void BVHGym::ResetCamera()
 {
 	float dist = 4;
@@ -55,7 +67,7 @@ void BVHGym::ResetCamera()
 BVHGym::BVHGym(struct GUIHelperInterface* helper) : CommonMultiBodyBase(helper),
 	m_articulatedRagdoll(NULL), m_skeletalMotion(NULL)
 {
-	m_bDrawSkeleton = false;
+	m_bDrawSkeleton = true;
 	m_bDrawCOMState = true;
 	m_bShouldTerminate = false;
 };
@@ -79,15 +91,15 @@ void BVHGym::initPhysics()
 	if (m_dynamicsWorld->getDebugDrawer())
 		m_dynamicsWorld->getDebugDrawer()->setDebugMode(btIDebugDraw::DBG_DrawWireframe+btIDebugDraw::DBG_DrawContactPoints);
 
-	///Create Ground
-	btBoxShape* groundShape = createBoxShape(btVector3(btScalar(50.),btScalar(50.),btScalar(50.)));	
+	//Create Ground
+	/*btBoxShape* groundShape = createBoxShape(btVector3(btScalar(50.),btScalar(50.),btScalar(50.)));	
 	m_collisionShapes.push_back(groundShape);
 
 	btTransform groundTransform;
 	groundTransform.setIdentity();
-	groundTransform.setOrigin(btVector3(0,-100,0));
+	groundTransform.setOrigin(btVector3(0,-50,0));
 
-	createRigidBody(0.0f,groundTransform,groundShape, btVector4(0,0,1,1));
+	createRigidBody(0.0f,groundTransform,groundShape, btVector4(0,0,1,1));*/
 
 	// Create Ragdoll
 	m_articulatedRagdoll = new RagdollWithKinematicBodiesConstraints(m_dynamicsWorld, m_skeletalMotion, 0, btVector3(), 1);
@@ -103,6 +115,21 @@ void BVHGym::processCommandLineArgs(int argc, char* argv[])
 	{
 		std::cout << "Loading Animation file: " << argv[1] << ". \n";
 		bAnimationLoaded = SetBVHAnimation(SkeletalMotion::BVHImport(argv[1]));
+
+		if (!FindArgInArgv("-noNormalize", argc, argv))
+		{
+			this->m_skeletalMotion->SetNormalizedScaleWithMultiplier(10.0);
+		}
+
+		if (FindArgInArgv("-noSkeleton", argc, argv))
+		{
+			m_bDrawSkeleton = false;
+		}
+
+		if (FindArgInArgv("-noCOMState", argc, argv))
+		{
+			m_bDrawCOMState = false;
+		}
 	}
 	else
 	{

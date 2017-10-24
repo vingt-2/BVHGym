@@ -235,6 +235,21 @@ void SkeletalMotion::SetNormalizedScale()
 	m_skeletonScale = 1.0f / maxLength;
 }
 
+void SkeletalMotion::SetNormalizedScaleWithMultiplier(float scaleCoeff)
+{
+	vector<btVector3> jointPositions;
+	QuerySkeletalAnimation(0, 0, false, &jointPositions, NULL, NULL, NULL);
+
+	float maxLength = 0;
+	for (btVector3 position : jointPositions)
+	{
+		if (maxLength < position.length())
+			maxLength = position.length();
+	}
+
+	m_skeletonScale = scaleCoeff / maxLength;
+}
+
 SkeletalMotion::~SkeletalMotion()
 {
 
