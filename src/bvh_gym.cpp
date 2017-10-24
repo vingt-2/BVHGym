@@ -52,19 +52,20 @@ void BVHGym::ResetCamera()
 	m_guiHelper->resetCamera(dist, yaw, pitch, targetPos[0], targetPos[1], targetPos[2]);
 }
 
-BVHGym::BVHGym(struct GUIHelperInterface* helper) : CommonMultiBodyBase(helper)
+BVHGym::BVHGym(struct GUIHelperInterface* helper) : CommonMultiBodyBase(helper),
+	m_articulatedRagdoll(NULL), m_skeletalMotion(NULL)
 {
 	m_bDrawSkeleton = false;
 	m_bDrawCOMState = true;
 	m_bShouldTerminate = false;
-
-	m_animationPlayer = new SkeletalAnimationPlayer();
 };
 
 BVHGym::~BVHGym()
 {
-	delete m_skeletalMotion;
-	delete m_animationPlayer;
+	if (m_skeletalMotion)
+		delete m_skeletalMotion;
+	if (m_articulatedRagdoll)
+		delete m_articulatedRagdoll;
 }
 
 void BVHGym::initPhysics()
@@ -99,7 +100,14 @@ void BVHGym::processCommandLineArgs(int argc, char* argv[])
 {
 	bool bAnimationLoaded = false;
 	if (argc > 1)
+	{
+		std::cout << "Loading Animation file: " << argv[1] << ". \n";
 		bAnimationLoaded = SetBVHAnimation(SkeletalMotion::BVHImport(argv[1]));
+	}
+	else
+	{
+		std::cout << "You need to provide a path to a BVH file as argument. \n";
+	}
 
 	if (!bAnimationLoaded)
 	{
@@ -115,10 +123,10 @@ void BVHGym::renderScene()
 	
 	// Update Animation Player
 	bool bIsAnimationStarting;
-	m_animationPlayer->UpdatePlayer(bIsAnimationStarting);
+	m_animationPlayer.UpdatePlayer(bIsAnimationStarting);
 
 	// Query which animation frame we shall be playing
-	int animationFrame = m_animationPlayer->GetCurrentAnimationFrame();
+	int animationFrame = m_animationPlayer.GetCurrentAnimationFrame();
 
 	// Update our articulated physics object to the specified animation frame.
 	m_articulatedRagdoll->UpdateJointPositions(animationFrame);
@@ -175,9 +183,9 @@ void BVHGym::renderScene()
 			m_dynamicsWorld->getDebugDrawer()->drawSphere(velocityDrawStart, 0.3, { 1, 0, 0 });
 		
 			// Draw Velocity, Acceleration and Angular Momentum
-			m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + m_articulatedRagdoll->GetCOMVelocity(), { 1, 0, 0 });
-			m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + m_articulatedRagdoll->GetCOMAcceleration(), { 0, 0, 1 });
-			m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + m_articulatedRagdoll->GetCOMAngularMomentum(), { 0, 1, 0 });
+			m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + m_articulatedRagdoll->GetSmoothCOMVelocity(), { 1, 0, 0 });
+			//m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + m_articulatedRagdoll->GetSmoothCOMAcceleration(), { 0, 0, 1 });
+			m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + m_articulatedRagdoll->GetSmoothCOMAngularMomentum(), { 0, 1, 0 });
 		}
 
 		for (int i = 0; i < m_articulatedRagdoll->m_debugBodyCOMs.size(); i++)

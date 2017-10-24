@@ -67,9 +67,14 @@ public:
 	virtual void KillRagdoll() = 0;
 
 	virtual btVector3 GetCOMPosition() = 0;
+
 	virtual btVector3 GetCOMVelocity() = 0;
 	virtual btVector3 GetCOMAcceleration() = 0;
 	virtual btVector3 GetCOMAngularMomentum() = 0;
+
+	virtual btVector3 GetSmoothCOMVelocity() = 0;
+	virtual btVector3 GetSmoothCOMAcceleration() = 0;
+	virtual btVector3 GetSmoothCOMAngularMomentum() = 0;
 
 	virtual float		GetTotalMass() = 0;
 
@@ -100,11 +105,17 @@ public:
 
 	virtual void KillRagdoll();
 
-	virtual btVector3 GetCOMPosition() { return m_COMPositions[0]; }
-	virtual btVector3 GetCOMVelocity() { return m_COMVelocity; };
-	virtual btVector3 GetCOMAcceleration() { return m_COMAcceleration; };
-	virtual btVector3 GetCOMAngularMomentum(){ return m_angularMomentum; };
+	virtual btVector3 GetCOMPosition() { return m_COMPositions[0]; };
+
+	virtual btVector3 GetCOMVelocity() { return m_COMVelocities[0]; };
+	virtual btVector3 GetCOMAcceleration() { return m_COMAccelerations[0]; };
+	virtual btVector3 GetCOMAngularMomentum(){ return m_angularMomentums[0]; };
 	
+	virtual btVector3 GetSmoothCOMVelocity();
+	virtual btVector3 GetSmoothCOMAcceleration();
+	virtual btVector3 GetSmoothCOMAngularMomentum();
+
+
 	virtual float		GetTotalMass()
 	{
 		float mass = 0;
@@ -132,12 +143,12 @@ private:
 
 	btRigidBody* createRigidBody(btScalar mass, const btTransform& startTransform, btCollisionShape* shape);
 
-#define SMOOTHING_WINDOW_SIZE 4
+#define SMOOTHING_WINDOW_SIZE 32
 
 	btVector3 m_COMPositions[SMOOTHING_WINDOW_SIZE];
-	btVector3 m_COMVelocity;
-	btVector3 m_COMAcceleration;
-	btVector3 m_angularMomentum;
+	btVector3 m_COMVelocities[SMOOTHING_WINDOW_SIZE];
+	btVector3 m_COMAccelerations[SMOOTHING_WINDOW_SIZE];
+	btVector3 m_angularMomentums[SMOOTHING_WINDOW_SIZE];
 
 	btClock m_clock;
 	float m_lastTime;

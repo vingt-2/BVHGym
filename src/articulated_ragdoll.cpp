@@ -64,12 +64,44 @@ using namespace std;
 
 void UpdateCOMBuffer(btVector3 &com, btVector3 *buffer)
 {
+	btVector3 lastValue = buffer[0];
 	for (int i = 0; i < SMOOTHING_WINDOW_SIZE - 1; i++)
 	{
-		buffer[i + 1] = buffer[i];
+		btVector3 tmpValue = buffer[i + 1];
+		buffer[i + 1] = lastValue;
+		lastValue = tmpValue;
 	}
 
 	buffer[0] = com;
+}
+
+btVector3 SmoothedBuffer(btVector3 *buffer)
+{
+	// ASSUMING SMOOTHING_WINDOW_SIZE 4
+	//return 0.5*buffer[0] + 0.3*buffer[1] + 0.1*buffer[2] + 0.1*buffer[3];
+	btVector3 result(0, 0, 0);
+
+	for (int i = 0; i < SMOOTHING_WINDOW_SIZE; i++)
+	{
+		result += buffer[i];
+	}
+
+	return (result / SMOOTHING_WINDOW_SIZE);
+}
+
+btVector3 RagdollWithKinematicBodiesConstraints::GetSmoothCOMVelocity()
+{
+	return SmoothedBuffer(m_COMVelocities);
+}
+
+btVector3 RagdollWithKinematicBodiesConstraints::GetSmoothCOMAcceleration()
+{
+	return SmoothedBuffer(m_COMAccelerations);
+}
+
+btVector3 RagdollWithKinematicBodiesConstraints::GetSmoothCOMAngularMomentum()
+{
+	return SmoothedBuffer(m_angularMomentums);
 }
 
 btRigidBody* RagdollWithKinematicBodiesConstraints::createRigidBody(btScalar mass, const btTransform& startTransform, btCollisionShape* shape)
@@ -264,6 +296,8 @@ void RagdollWithKinematicBodiesConstraints::UpdateJointPositions(int frameIndex)
 			m_jointKinematicMotionStates[joint.first]->setKinematicPos(btTransform(btMatrix3x3::getIdentity(), joint.second));
 	}
 
+	// Compute COM Position, estimate Velocity and acceleration
+
 	btCompoundShapeChild* children = m_compoundShape.getChildList();
 	for (int i = 0; i < m_bodies.size(); i++)
 	{
@@ -275,15 +309,14 @@ void RagdollWithKinematicBodiesConstraints::UpdateJointPositions(int frameIndex)
 
 	UpdateCOMBuffer(principalAxes.getOrigin(), m_COMPositions);
 
-	m_COMVelocity = 0.8*(m_COMPositions[0] - m_COMPositions[1]) + 0.2*(m_COMPositions[2] - m_COMPositions[3]) / deltaTime;
+	UpdateCOMBuffer((0.8*(m_COMPositions[0] - m_COMPositions[1]) + 0.2*(m_COMPositions[2] - m_COMPositions[3])) / deltaTime, m_COMVelocities);
 
-	m_COMAcceleration = (m_COMPositions[0] - 2 * m_COMPositions[1] + m_COMPositions[2]) / deltaTime*deltaTime;
+	UpdateCOMBuffer((m_COMPositions[0] - 2 * m_COMPositions[1] + m_COMPositions[2]) / (deltaTime*deltaTime), m_COMAccelerations);
 
-	m_angularMomentum = btVector3(0, 0, 0);
+	btVector3 totalAngularMomentum(0, 0, 0);
 
 	m_debugBodiesMomentum.clear();
 	m_debugBodyCOMs.clear();
-
 
 	// Now let us compute the total Angular Momentum;
 	float totalMass = GetTotalMass();
@@ -309,8 +342,10 @@ void RagdollWithKinematicBodiesConstraints::UpdateJointPositions(int frameIndex)
 		btVector3 bodyCOMFromTotalCOM = bodyCOM - GetCOMPosition();
 		btVector3 bodyVelFromTotalVel = m_bodies[i]->getLinearVelocity() - GetCOMVelocity();
 
-		m_angularMomentum += mass * (bodyCOMFromTotalCOM.cross(bodyVelFromTotalVel));
+		totalAngularMomentum += mass * (bodyCOMFromTotalCOM.cross(bodyVelFromTotalVel));
 	}
+
+	UpdateCOMBuffer(totalAngularMomentum, m_angularMomentums);
 }
 
 void RagdollWithKinematicBodiesConstraints::KillRagdoll()
@@ -475,3 +510,11 @@ void MultiBodyArticulatedRagdoll::UpdateJointPositions(int frameIndex)
 void MultiBodyArticulatedRagdoll::GetConstraintsJointPositions(std::vector<btVector3> &resultVector){}
 
 void MultiBodyArticulatedRagdoll::KillRagdoll(){}
+
+MultiBodyArticulatedRagdoll::~MultiBodyArticulatedRagdoll()
+{
+	if (m_multiBody)
+	{
+		delete m_multiBody;
+	}
+}

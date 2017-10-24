@@ -280,6 +280,8 @@ SkeletalMotion* SkeletalMotion::BVHImport(string bvhFilePath)
 		currentToken++;
 	}
 
+	// Print the Skeleton to the console
+	std::cout << "Loaded the following Skeleton: \n\n";
 	for (auto roots : skeletalRoots)
 	{
 		roots->PrintJoint();

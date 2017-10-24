@@ -68,7 +68,7 @@ struct BVHGym : public CommonMultiBodyBase
 		{
 			return false;
 		}
-		m_animationPlayer->SetSkeletalMotion(motion);
+		m_animationPlayer.SetSkeletalMotion(motion);
 		m_skeletalMotion = motion;
 		return true;
 	}
@@ -84,8 +84,7 @@ struct BVHGym : public CommonMultiBodyBase
 		else
 			m_keycode = -1;
 
-		if (m_animationPlayer)
-			m_animationPlayer->InputKeyPressed(m_keycode);
+		m_animationPlayer.InputKeyPressed(m_keycode);
 
 		return true;
 	}
@@ -97,7 +96,7 @@ struct BVHGym : public CommonMultiBodyBase
 	bool IsTerminating() { return m_bShouldTerminate; }
 
 private:
-	SkeletalAnimationPlayer* m_animationPlayer;
+	SkeletalAnimationPlayer m_animationPlayer;
 	SkeletalMotion* m_skeletalMotion;
 	ArticulatedRagdoll* m_articulatedRagdoll;
 
