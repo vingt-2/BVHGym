@@ -1,3 +1,21 @@
+/*
+	BVHGYM: Loads and plays skeletal animation in a physically simulated environment
+	Copyright(C) 2017 Vincent Petrella
+
+	This program is free software : you can redistribute it and / or modify
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
+
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.See the
+	GNU General Public License for more details.
+
+	You should have received a copy of the GNU General Public License
+	along with this program.If not, see <https://www.gnu.org/licenses/>.
+*/
+
 #include <fstream>
 #include <iostream>
 #include <string.h>
@@ -18,40 +36,12 @@ void InvalidBVH()
 
 #define INVALID_BVH {InvalidBVH(); return NULL;}
 
+// Helper that gets Which rotation matrix we should output for each axis
 btMatrix3x3 GetRotationMatrix(int axis, btScalar angle);
+// Helper that turns a bunch of string parameters from a bvh to int values
+int ChannelOrderToInt(string str);
 
-int ChannelOrderToInt(string str)
-{
-	if (!str.compare("Xrotation"))
-	{
-		return 0;
-	}
-	else if (!str.compare("Yrotation"))
-	{
-		return 1;
-	}
-	else if (!str.compare("Zrotation"))
-	{
-		return 2;
-	}
-	else if (!str.compare("Xposition"))
-	{
-		return 0;
-	}
-	else if (!str.compare("Yposition"))
-	{
-		return 1;
-	}
-	else if (!str.compare("Zposition"))
-	{
-		return 2;
-	}
-	else
-	{
-		return -1;
-	}
-}
-
+// Turns a big string file into a big bunch of tokens (splits with special characters)
 void tokenize(vector<string>& tokens, string str)
 {
 	string token = "";
@@ -76,6 +66,7 @@ void tokenize(vector<string>& tokens, string str)
 	}
 }
 
+// See BVHImport for explanation
 SkeletonJoint* ParseJoint(vector<string> &tokens, int startToken, int* endToken, unordered_map<string, vector<int>> &jointChannelsOrderings)
 {
 	if (tokens[startToken + 2].compare("{"))
@@ -176,6 +167,7 @@ SkeletonJoint* ParseJoint(vector<string> &tokens, int startToken, int* endToken,
 	return new SkeletonJoint(jointName,jointChildren,jointLocalOffset);
 }
 
+// See BVHImport for explanation
 void ReadFrameRecursive(vector<string>& tokens,
 	unordered_map<string, vector<btTransform>>& jointTransforms,
 	SkeletonJoint* joint,
@@ -211,6 +203,15 @@ void ReadFrameRecursive(vector<string>& tokens,
 	}
 }
 
+/*
+	BVH Imports:
+
+	1) Opens the file.
+	2) Calls a recursive joint parser to parse the tree structure
+	3) for each frame, calls a recursive frame data reader that recusrively populates 
+		the tree's joints data and advances in the frames data block.
+	4) Profit. Returns a null pointer if there were any issue parsing the data.
+*/
 SkeletalMotion* SkeletalMotion::BVHImport(string bvhFilePath)
 {
 	ifstream bvhFile(bvhFilePath, std::ifstream::binary);
@@ -341,6 +342,7 @@ SkeletalMotion* SkeletalMotion::BVHImport(string bvhFilePath)
 	return result;
 }
 
+// Gets Which rotation matrix we should output for each axis
 btMatrix3x3 GetRotationMatrix(int axis, btScalar angle)
 {
 	angle *= M_PI / 180.0;
@@ -371,5 +373,43 @@ btMatrix3x3 GetRotationMatrix(int axis, btScalar angle)
 			sin(angle), cos(angle), 0,
 			-0, 0, 1
 			);
+	}
+	else
+	{
+		std::cout << "Warning: Invalid rotation axis provided in bvh file...\n";
+		return btMatrix3x3::getIdentity();
+	}
+}
+
+// Helper that turns a bunch of string parameters from a bvh to int values
+int ChannelOrderToInt(string str)
+{
+	if (!str.compare("Xrotation"))
+	{
+		return 0;
+	}
+	else if (!str.compare("Yrotation"))
+	{
+		return 1;
+	}
+	else if (!str.compare("Zrotation"))
+	{
+		return 2;
+	}
+	else if (!str.compare("Xposition"))
+	{
+		return 0;
+	}
+	else if (!str.compare("Yposition"))
+	{
+		return 1;
+	}
+	else if (!str.compare("Zposition"))
+	{
+		return 2;
+	}
+	else
+	{
+		return -1;
 	}
 }

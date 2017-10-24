@@ -62,6 +62,16 @@ using namespace std;
 #define EPSILON		1.192092896e-07F
 #endif
 
+void UpdateCOMBuffer(btVector3 &com, btVector3 *buffer)
+{
+	for (int i = 0; i < SMOOTHING_WINDOW_SIZE - 1; i++)
+	{
+		buffer[i + 1] = buffer[i];
+	}
+
+	buffer[0] = com;
+}
+
 btRigidBody* RagdollWithKinematicBodiesConstraints::createRigidBody(btScalar mass, const btTransform& startTransform, btCollisionShape* shape)
 {
 	bool isDynamic = (mass != 0.f);
@@ -87,6 +97,7 @@ RagdollWithKinematicBodiesConstraints::RagdollWithKinematicBodiesConstraints(
 	const btVector3& positionOffset,
 	btScalar scale)
 {
+	m_lastTime = m_clock.getTimeSeconds();
 	m_ownerWorld = ownerWorld;
 	m_skeletalMotion = skeletalMotion;
 	unordered_map<string, btVector3> jointPositionsByNames;
@@ -237,6 +248,10 @@ RagdollWithKinematicBodiesConstraints::~RagdollWithKinematicBodiesConstraints()
 
 void RagdollWithKinematicBodiesConstraints::UpdateJointPositions(int frameIndex)
 {
+	float time = m_clock.getTimeSeconds();
+	float deltaTime = time - m_lastTime;
+	m_lastTime = time;
+
 	unordered_map<string, btVector3> jointPositions;
 	m_skeletalMotion->QuerySkeletalAnimation(frameIndex, 0, true, NULL, &jointPositions, NULL, NULL);
 
@@ -258,13 +273,19 @@ void RagdollWithKinematicBodiesConstraints::UpdateJointPositions(int frameIndex)
 	btVector3 inertia;
 	this->m_compoundShape.calculatePrincipalAxisTransform(&(m_masses[0]), principalAxes, inertia);
 
-	m_COMPosition = principalAxes.getOrigin();
+	UpdateCOMBuffer(principalAxes.getOrigin(), m_COMPositions);
+
+	m_COMVelocity = 0.8*(m_COMPositions[0] - m_COMPositions[1]) + 0.2*(m_COMPositions[2] - m_COMPositions[3]) / deltaTime;
+
+	m_COMAcceleration = (m_COMPositions[0] - 2 * m_COMPositions[1] + m_COMPositions[2]) / deltaTime*deltaTime;
 
 	m_angularMomentum = btVector3(0, 0, 0);
 
 	m_debugBodiesMomentum.clear();
 	m_debugBodyCOMs.clear();
 
+
+	// Now let us compute the total Angular Momentum;
 	float totalMass = GetTotalMass();
 	for (int i = 0; i < m_bodies.size(); i++)
 	{
@@ -277,9 +298,7 @@ void RagdollWithKinematicBodiesConstraints::UpdateJointPositions(int frameIndex)
 
 		btVector3 bodyAngularVelocityLocal = bodyToWorldRotation.inverse() * m_bodies[i]->getAngularVelocity();
 
-		btVector3 angularMomentumLocal(bodyInertiaLocal.getX() * bodyAngularVelocityLocal.getX(), bodyInertiaLocal.getY() * bodyAngularVelocityLocal.getY(), bodyInertiaLocal.getZ() * bodyAngularVelocityLocal.getZ());
-
-		btVector3 bodyAngularMomentumWorld = (bodyToWorldRotation * angularMomentumLocal);
+		btVector3 bodyAngularMomentumWorld = (bodyToWorldRotation * (bodyInertiaLocal * bodyAngularVelocityLocal));
 		
 		m_debugBodiesMomentum.push_back(bodyAngularMomentumWorld);
 
@@ -287,10 +306,11 @@ void RagdollWithKinematicBodiesConstraints::UpdateJointPositions(int frameIndex)
 
 		m_debugBodyCOMs.push_back(bodyCOM);
 
-		// We kinda want the angular momentum af the center of mass... So bodyCOM x w is 0...
-		m_angularMomentum += (mass * bodyCOM.cross(m_bodies[i]->getLinearVelocity()) + bodyAngularMomentumWorld);
-	}
+		btVector3 bodyCOMFromTotalCOM = bodyCOM - GetCOMPosition();
+		btVector3 bodyVelFromTotalVel = m_bodies[i]->getLinearVelocity() - GetCOMVelocity();
 
+		m_angularMomentum += mass * (bodyCOMFromTotalCOM.cross(bodyVelFromTotalVel));
+	}
 }
 
 void RagdollWithKinematicBodiesConstraints::KillRagdoll()

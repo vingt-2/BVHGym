@@ -221,7 +221,7 @@ public:
 			if (keyPressed == 0)
 			{
 				m_currentAnimationFrame = 0;
-				m_playerState = IS_PLAYING;
+				m_playerState = SHOULD_START;
 			}
 			else if (keyPressed == 1)
 			{
@@ -277,6 +277,7 @@ public:
 		Call every frame if you want the player state to progress !
 	*/
 	void UpdatePlayer();
+	void UpdatePlayer(bool &bIsAnimationStarting);
 
 	/*
 		Set which Skeletal Motion animation we are playing. We need to know about it for things like sampling rate and frame count
@@ -306,7 +307,8 @@ private:
 		IS_PLAYING,
 		IS_STOPED,
 		IS_WAITING_START,
-		IS_WAITING_END
+		IS_WAITING_END,
+		SHOULD_START
 	};
 
 	btClock m_clock;

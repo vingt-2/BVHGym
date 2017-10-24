@@ -199,6 +199,25 @@ void SkeletalAnimationPlayer::UpdatePlayer()
 			m_playerState = IS_WAITING_START;
 		}
 	}
+	else if (m_playerState == SHOULD_START)
+	{
+		m_playerState = IS_PLAYING;
+	}
+}
+
+void SkeletalAnimationPlayer::UpdatePlayer(bool &bIsAnimationStarting)
+{
+	bIsAnimationStarting = false;
+	if (m_playerState == SHOULD_START)
+	{
+		UpdatePlayer();
+		if (m_playerState == IS_PLAYING)
+			bIsAnimationStarting = true;
+	}
+	else
+	{
+		UpdatePlayer();
+	}
 }
 
 void SkeletalMotion::SetNormalizedScale()

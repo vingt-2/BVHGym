@@ -97,7 +97,9 @@ void BVHGym::initPhysics()
 
 void BVHGym::processCommandLineArgs(int argc, char* argv[])
 {
-	bool bAnimationLoaded = SetBVHAnimation(SkeletalMotion::BVHImport("test.bvh"));
+	bool bAnimationLoaded = false;
+	if (argc > 1)
+		bAnimationLoaded = SetBVHAnimation(SkeletalMotion::BVHImport(argv[1]));
 
 	if (!bAnimationLoaded)
 	{
@@ -110,9 +112,10 @@ void BVHGym::renderScene()
 {
 	// Remove previously setup debug draw calls
 	m_dynamicsWorld->getDebugDrawer()->flushLines();
-
+	
 	// Update Animation Player
-	m_animationPlayer->UpdatePlayer();
+	bool bIsAnimationStarting;
+	m_animationPlayer->UpdatePlayer(bIsAnimationStarting);
 
 	// Query which animation frame we shall be playing
 	int animationFrame = m_animationPlayer->GetCurrentAnimationFrame();
@@ -123,6 +126,9 @@ void BVHGym::renderScene()
 	CommonMultiBodyBase::renderScene();
 
 	// Fill out the center of mass positions buffer
+	if (bIsAnimationStarting)
+		m_comPositions.clear();
+
 	if (m_comPositions.size())
 	{
 		if(m_comPositions[m_comPositions.size() - 1] != m_articulatedRagdoll->GetCOMPosition())
@@ -130,13 +136,6 @@ void BVHGym::renderScene()
 	}
 	else
 		m_comPositions.push_back(m_articulatedRagdoll->GetCOMPosition());
-
-	if (m_comPositions.size() > 1)
-	{
-		m_comVelocities.push_back((m_comPositions[m_comPositions.size() - 1] - m_comPositions[m_comPositions.size() - 2]) * m_skeletalMotion->GetSamplingRate());
-		btVector3 totalAngularMomentum = m_articulatedRagdoll->GetCOMAngularMomentum() - m_articulatedRagdoll->GetTotalMass()*m_comPositions[m_comPositions.size() - 1].cross(m_comVelocities[m_comVelocities.size() - 1]);
-		m_angularMomentum.push_back(totalAngularMomentum);
-	}
 
 	// Should we draw the skeleton, if yes draw segments as red lines and joints as red ballz
 	if (m_bDrawSkeleton)
@@ -167,25 +166,18 @@ void BVHGym::renderScene()
 				m_dynamicsWorld->getDebugDrawer()->drawLine(m_comPositions[i], m_comPositions[i + 1], { 1, 1, 1 });
 			}
 
-			btVector3 smoothVelocityEstimate = 0.6*m_comVelocities[m_comVelocities.size() - 1] + 0.25*m_comVelocities[m_comVelocities.size() - 2] + 0.15*m_comVelocities[m_comVelocities.size() - 3];
-			btVector3 smoothAngularMomentumEstimate;
-			for (int i = 0; i < 10; i++)
-			{
-				smoothAngularMomentumEstimate += m_angularMomentum[m_angularMomentum.size() - i] / 10.0;
-			}
-
-
 			btVector3 velocityDrawStart = m_comPositions[m_comPositions.size() - 1];
 			velocityDrawStart.setY(0);
-
-			m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + smoothVelocityEstimate, { 1, 0, 0 });
-
-			m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + smoothAngularMomentumEstimate, { 0, 1, 0 });
 
 			// Draw Center of mass on actual position
 			m_dynamicsWorld->getDebugDrawer()->drawSphere(m_comPositions[m_comPositions.size() - 1], 0.3, { 1, 1, 1 });
 			// and also projected on y=0
 			m_dynamicsWorld->getDebugDrawer()->drawSphere(velocityDrawStart, 0.3, { 1, 0, 0 });
+		
+			// Draw Velocity, Acceleration and Angular Momentum
+			m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + m_articulatedRagdoll->GetCOMVelocity(), { 1, 0, 0 });
+			m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + m_articulatedRagdoll->GetCOMAcceleration(), { 0, 0, 1 });
+			m_dynamicsWorld->getDebugDrawer()->drawLine(velocityDrawStart, velocityDrawStart + m_articulatedRagdoll->GetCOMAngularMomentum(), { 0, 1, 0 });
 		}
 
 		for (int i = 0; i < m_articulatedRagdoll->m_debugBodyCOMs.size(); i++)

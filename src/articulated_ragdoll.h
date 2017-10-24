@@ -68,8 +68,8 @@ public:
 
 	virtual btVector3 GetCOMPosition() = 0;
 	virtual btVector3 GetCOMVelocity() = 0;
+	virtual btVector3 GetCOMAcceleration() = 0;
 	virtual btVector3 GetCOMAngularMomentum() = 0;
-
 
 	virtual float		GetTotalMass() = 0;
 
@@ -100,8 +100,9 @@ public:
 
 	virtual void KillRagdoll();
 
-	virtual btVector3 GetCOMPosition() { return m_COMPosition; }
-	virtual btVector3 GetCOMVelocity() { return btVector3(); };
+	virtual btVector3 GetCOMPosition() { return m_COMPositions[0]; }
+	virtual btVector3 GetCOMVelocity() { return m_COMVelocity; };
+	virtual btVector3 GetCOMAcceleration() { return m_COMAcceleration; };
 	virtual btVector3 GetCOMAngularMomentum(){ return m_angularMomentum; };
 	
 	virtual float		GetTotalMass()
@@ -113,8 +114,6 @@ public:
 		}
 		return mass;
 	}
-
-	// For debug, remove later
 	
 private:
 	std::vector<btCollisionShape*>			m_shapes;
@@ -133,11 +132,15 @@ private:
 
 	btRigidBody* createRigidBody(btScalar mass, const btTransform& startTransform, btCollisionShape* shape);
 
-	btVector3 m_COMPosition;
+#define SMOOTHING_WINDOW_SIZE 4
+
+	btVector3 m_COMPositions[SMOOTHING_WINDOW_SIZE];
 	btVector3 m_COMVelocity;
 	btVector3 m_COMAcceleration;
-
 	btVector3 m_angularMomentum;
+
+	btClock m_clock;
+	float m_lastTime;
 };
 
 class MultiBodyArticulatedRagdoll : public ArticulatedRagdoll

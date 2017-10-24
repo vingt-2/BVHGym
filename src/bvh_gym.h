@@ -100,9 +100,8 @@ private:
 	SkeletalAnimationPlayer* m_animationPlayer;
 	SkeletalMotion* m_skeletalMotion;
 	ArticulatedRagdoll* m_articulatedRagdoll;
+
 	std::vector<btVector3> m_comPositions;
-	std::vector<btVector3> m_comVelocities;
-	std::vector<btVector3> m_angularMomentum;
 
 	bool m_bDrawSkeleton;
 	bool m_bDrawCOMState;
