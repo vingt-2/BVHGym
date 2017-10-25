@@ -3,7 +3,15 @@ BVH Gym
 ![demo](bvh_gym_demo.gif)
 ===================================
 
-Loads BVH animation file and plays animation on an articulated ragdoll in the bullet physics engine.
+Loads BVH animation file and plays animation on an articulated ragdoll in the bullet physics engine. Each limb's mass is proportional to its length.
+
+Display:
+	
+	White Sphere and trail: Center of Mass Position
+	Red Sphere: Center of Mass Position projected on Y=0.
+	Red Line: Center Of Mass velocity
+	Blue Line: Center Of Mass acceleration (smoothed)
+	Green Line: Total Angular Momentum of the Skeleton System.
 
 Controls:
 
